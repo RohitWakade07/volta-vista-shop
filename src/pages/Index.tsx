@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, Plus, Minus, Search, Star, Truck, Shield, Zap, Heart, Grid, List, Menu, X, User, LogOut, CreditCard } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Search, Star, Truck, Shield, Zap, Heart, Grid, List, Menu, X, User, LogOut, CreditCard, Mail, Phone, Moon, Sun } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface Product {
   id: string;
@@ -39,16 +40,15 @@ const Index = () => {
     setTestState('React is working!');
   }, []);
   
-  // Temporarily bypass Firebase auth for testing
-  const mockAuth = {
-    currentUser: null,
-    userProfile: null,
-    logout: async () => console.log('Mock logout')
-  };
-  
   const { toast } = useToast();
-  // const { currentUser, userProfile, logout } = useAuth(); // Commented out for testing
-  const { currentUser, userProfile, logout } = mockAuth; // Use mock for testing
+  const { currentUser, userProfile, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  
+  // Debug logging for authentication
+  useEffect(() => {
+    console.log('Current user:', currentUser);
+    console.log('User profile:', userProfile);
+  }, [currentUser, userProfile]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,10 +82,10 @@ const Index = () => {
             {
               id: "1",
               name: "Arduino Uno R3",
-              price: 24.99,
-              originalPrice: 29.99,
-              image: "/api/placeholder/300/200",
-              description: "Microcontroller board based on the ATmega328P with 14 digital I/O pins",
+              price: 899, // 3x higher than Robu.in price (~₹300)
+              originalPrice: 1099,
+              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Microcontroller board based on the ATmega328P with 14 digital I/O pins, perfect for beginners and advanced projects",
               category: "Microcontrollers",
               inStock: true,
               rating: 4.8,
@@ -95,9 +95,9 @@ const Index = () => {
             {
               id: "2", 
               name: "Motor Driver L298N",
-              price: 8.99,
-              image: "/api/placeholder/300/200",
-              description: "Dual H-Bridge Motor Driver for DC and Stepper Motors with 2A current capacity",
+              price: 299, // 3x higher than Robu.in price (~₹100)
+              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Dual H-Bridge Motor Driver for DC and Stepper Motors with 2A current capacity, ideal for robotics projects",
               category: "Motor Drivers",
               inStock: true,
               rating: 4.6,
@@ -106,9 +106,9 @@ const Index = () => {
             {
               id: "3",
               name: "Breadboard 830 Point",
-              price: 5.99,
-              image: "/api/placeholder/300/200", 
-              description: "Solderless breadboard for prototyping circuits with power rails",
+              price: 199, // 3x higher than Robu.in price (~₹70)
+              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Solderless breadboard for prototyping circuits with power rails, essential for electronics prototyping",
               category: "Prototyping",
               inStock: true,
               rating: 4.7,
@@ -117,10 +117,10 @@ const Index = () => {
             {
               id: "4",
               name: "Raspberry Pi 4B 8GB",
-              price: 75.00,
-              originalPrice: 89.99,
-              image: "/api/placeholder/300/200",
-              description: "Single-board computer with ARM Cortex-A72 processor and 8GB RAM",
+              price: 8999, // 3x higher than Robu.in price (~₹3000)
+              originalPrice: 10999,
+              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Single-board computer with ARM Cortex-A72 processor and 8GB RAM, perfect for IoT and computing projects",
               category: "Single Board Computers",
               inStock: false,
               rating: 4.9,
@@ -130,9 +130,9 @@ const Index = () => {
             {
               id: "5",
               name: "Servo Motor SG90",
-              price: 3.50,
-              image: "/api/placeholder/300/200",
-              description: "Micro servo motor for robotics projects with 180° rotation",
+              price: 149, // 3x higher than Robu.in price (~₹50)
+              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Micro servo motor for robotics projects with 180° rotation, perfect for automation and robotics",
               category: "Motors",
               inStock: true,
               rating: 4.5,
@@ -141,14 +141,81 @@ const Index = () => {
             {
               id: "6",
               name: "ESP32 DevKit V1",
-              price: 12.99,
-              image: "/api/placeholder/300/200",
-              description: "WiFi and Bluetooth enabled microcontroller with dual-core processor",
+              price: 449, // 3x higher than Robu.in price (~₹150)
+              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "WiFi and Bluetooth enabled microcontroller with dual-core processor, ideal for IoT applications",
               category: "Microcontrollers", 
               inStock: true,
               rating: 4.7,
               reviews: 945,
               isFeatured: true
+            },
+            {
+              id: "7",
+              name: "LED Strip WS2812B",
+              price: 399, // 3x higher than Robu.in price (~₹130)
+              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Addressable RGB LED strip with 30 LEDs per meter, perfect for lighting projects and displays",
+              category: "LEDs",
+              inStock: true,
+              rating: 4.4,
+              reviews: 523
+            },
+            {
+              id: "8",
+              name: "Relay Module 5V",
+              price: 249, // 3x higher than Robu.in price (~₹80)
+              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "5V relay module for switching high voltage devices, essential for home automation projects",
+              category: "Relays",
+              inStock: true,
+              rating: 4.3,
+              reviews: 456
+            },
+            {
+              id: "9",
+              name: "Arduino Nano",
+              price: 599, // 3x higher than Robu.in price (~₹200)
+              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "Compact Arduino board based on ATmega328P, perfect for space-constrained projects",
+              category: "Microcontrollers",
+              inStock: true,
+              rating: 4.6,
+              reviews: 789
+            },
+            {
+              id: "10",
+              name: "Stepper Motor 28BYJ-48",
+              price: 349, // 3x higher than Robu.in price (~₹120)
+              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "28BYJ-48 stepper motor with ULN2003 driver, ideal for precise positioning applications",
+              category: "Motors",
+              inStock: true,
+              rating: 4.4,
+              reviews: 634
+            },
+            {
+              id: "11",
+              name: "Jumper Wires Set",
+              price: 179, // 3x higher than Robu.in price (~₹60)
+              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "40-piece jumper wire set with male-to-male, male-to-female, and female-to-female connectors",
+              category: "Prototyping",
+              inStock: true,
+              rating: 4.8,
+              reviews: 1123
+            },
+            {
+              id: "12",
+              name: "NodeMCU ESP8266",
+              price: 399, // 3x higher than Robu.in price (~₹130)
+              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
+              description: "WiFi-enabled microcontroller based on ESP8266, perfect for IoT and home automation projects",
+              category: "Microcontrollers",
+              inStock: true,
+              rating: 4.7,
+              reviews: 856,
+              isNew: true
             }
           ];
           setProducts(mockProducts);
@@ -291,8 +358,8 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                  Volta Vista
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text">
+                  Ultron
                 </h1>
                 <p className="text-xs text-muted-foreground">Electronic Components & Kits</p>
               </div>
@@ -313,12 +380,26 @@ const Index = () => {
             
             {/* User Menu */}
             <div className="flex items-center space-x-2">
+              {/* Theme Toggle */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                className="hidden sm:flex"
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+              
               {currentUser ? (
                 <div className="flex items-center space-x-2">
                   <Link to="/profile">
                     <Button variant="ghost" size="sm">
                       <User className="h-4 w-4 mr-2" />
-                      {userProfile?.displayName || 'Profile'}
+                      {userProfile?.displayName || currentUser?.email || 'Profile'}
                     </Button>
                   </Link>
                   {userProfile?.role === 'admin' && (
@@ -363,8 +444,8 @@ const Index = () => {
             </div>
           </div>
           
-          {/* Mobile Search Bar */}
-          <div className="md:hidden mt-4">
+          {/* Mobile Search Bar and Theme Toggle */}
+          <div className="md:hidden mt-4 space-y-2">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -374,6 +455,25 @@ const Index = () => {
                 className="pl-10"
               />
             </div>
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? (
+                  <>
+                    <Sun className="h-4 w-4 mr-2" />
+                    Light Mode
+                  </>
+                ) : (
+                  <>
+                    <Moon className="h-4 w-4 mr-2" />
+                    Dark Mode
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -381,7 +481,7 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+          <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text">
             Build Your Next Project
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
@@ -536,10 +636,10 @@ const Index = () => {
                     <CardContent>
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center space-x-2">
-                          <span className="text-2xl font-bold text-primary">${product.price}</span>
+                          <span className="text-2xl font-bold text-primary">₹{product.price}</span>
                           {product.originalPrice && (
                             <span className="text-sm text-muted-foreground line-through">
-                              ${product.originalPrice}
+                              ₹{product.originalPrice}
                             </span>
                           )}
                         </div>
@@ -603,7 +703,7 @@ const Index = () => {
                         
                         <div className="flex-1 min-w-0">
                           <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                          <p className="text-sm text-muted-foreground">${item.price}</p>
+                          <p className="text-sm text-muted-foreground">₹{item.price}</p>
                         </div>
                         
                         <div className="flex items-center space-x-2">
@@ -634,7 +734,7 @@ const Index = () => {
                   <div className="border-t border-border pt-4 space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold">Total:</span>
-                      <span className="text-xl font-bold text-primary">${getTotalPrice().toFixed(2)}</span>
+                      <span className="text-xl font-bold text-primary">₹{getTotalPrice().toFixed(0)}</span>
                     </div>
                     
                     <Button 
@@ -671,6 +771,78 @@ const Index = () => {
           )}
         </div>
       </div>
+
+      {/* Footer with Contact Information */}
+      <footer className="bg-muted/50 border-t border-border mt-16">
+        <div className="container mx-auto px-4 py-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Ultron</h3>
+              <p className="text-sm text-muted-foreground">
+                Premium electronic components, development kits, and tools for makers, 
+                engineers, and hobbyists.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Contact Us</h4>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <div className="flex items-center space-x-2">
+                  <Mail className="h-4 w-4" />
+                  <a href="mailto:ultron.inov@gmail.com" className="hover:text-primary transition-colors">
+                    ultron.inov@gmail.com
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone className="h-4 w-4" />
+                  <a href="tel:+919156294374" className="hover:text-primary transition-colors">
+                    +91 9156294374
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone className="h-4 w-4" />
+                  <a href="tel:+919307719509" className="hover:text-primary transition-colors">
+                    +91 9307719509
+                  </a>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Phone className="h-4 w-4" />
+                  <a href="tel:+917517769211" className="hover:text-primary transition-colors">
+                    +91 7517769211
+                  </a>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <div className="space-y-2 text-sm">
+                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">About Us</a></div>
+                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Products</a></div>
+                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Support</a></div>
+                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Privacy Policy</a></div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Newsletter</h4>
+              <p className="text-sm text-muted-foreground mb-4">
+                Stay updated with our latest products and offers.
+              </p>
+              <div className="flex space-x-2">
+                <Input placeholder="Enter your email" className="text-sm" />
+                <Button size="sm">Subscribe</Button>
+              </div>
+            </div>
+          </div>
+          
+          <div className="border-t border-border mt-8 pt-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              © 2024 Ultron. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };

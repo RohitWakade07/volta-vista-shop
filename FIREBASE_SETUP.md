@@ -1,117 +1,55 @@
-# Firebase Setup Guide
+# Firebase Setup Guide for Ultron Shop
 
-## 🔧 Fixing "Missing or insufficient permissions" Error
+## Current Issue
+The application is showing "400 Bad Request" errors when trying to connect to Firestore. This indicates that Firestore may not be properly enabled in your Firebase project.
 
-The error you're seeing is due to Firestore security rules not being properly configured. Follow these steps to fix it:
+## Steps to Fix Firestore Connection Issues
 
-### Step 1: Deploy Firestore Security Rules
+### 1. Enable Firestore Database
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Select your project: `ultroninov-a6a1e`
+3. In the left sidebar, click on **"Firestore Database"**
+4. Click **"Create database"**
+5. Choose **"Start in test mode"** (for development)
+6. Select a location (choose the closest to your users)
+7. Click **"Done"**
 
-1. **Install Firebase CLI** (if not already installed):
-   ```bash
-   npm install -g firebase-tools
-   ```
+### 2. Update Firestore Rules
+1. In Firestore Database, go to the **"Rules"** tab
+2. Replace the existing rules with the rules from `firestore.rules` file
+3. Click **"Publish"**
 
-2. **Login to Firebase**:
-   ```bash
-   firebase login
-   ```
+### 3. Enable Authentication (if not already enabled)
+1. In Firebase Console, go to **"Authentication"**
+2. Click **"Get started"**
+3. Go to **"Sign-in method"** tab
+4. Enable **"Email/Password"** and **"Google"** providers
+5. Add your domain to authorized domains
 
-3. **Initialize Firebase in your project**:
-   ```bash
-   firebase init firestore
-   ```
-   - Select your project: `ekart-e973c`
-   - Use existing rules file: `firestore.rules`
-   - Use existing indexes file: `firestore.indexes.json`
+### 4. Test the Connection
+1. Refresh your application
+2. Check the browser console for Firebase initialization logs
+3. Try to sign up/sign in
+4. The 400 errors should be resolved
 
-4. **Deploy the security rules**:
-   ```bash
-   firebase deploy --only firestore:rules
-   ```
+## Current Firebase Configuration
+```javascript
+const firebaseConfig = {
+  apiKey: "AIzaSyAFW9DjjBB2fKQLAs-QkVrMBO1eWTPJoSE",
+  authDomain: "ultroninov-a6a1e.firebaseapp.com",
+  projectId: "ultroninov-a6a1e",
+  storageBucket: "ultroninov-a6a1e.firebasestorage.app",
+  messagingSenderId: "105295407471",
+  appId: "1:105295407471:web:db0886b1c94aca05e1e09a",
+  measurementId: "G-7C90BZK7MB"
+};
+```
 
-### Step 2: Enable Google Authentication
+## Troubleshooting
+- If you still see 400 errors after enabling Firestore, check the browser console for specific error messages
+- Make sure your Firebase project is on the Blaze (pay-as-you-go) plan if you need to use external APIs
+- Verify that the project ID matches exactly: `ultroninov-a6a1e`
 
-1. **Go to Firebase Console**: https://console.firebase.google.com/
-2. **Select your project**: `ekart-e973c`
-3. **Navigate to Authentication**: Left sidebar → Authentication
-4. **Go to Sign-in method**: Click the "Sign-in method" tab
-5. **Enable Google**:
-   - Click on "Google" provider
-   - Toggle it ON
-   - Add your project support email
-   - Add authorized domains:
-     - `localhost` (for development)
-     - Your production domain (when ready)
-   - Save changes
-
-### Step 3: Verify Firestore Database
-
-1. **Go to Firestore Database**: Left sidebar → Firestore Database
-2. **Create database** (if not exists):
-   - Click "Create database"
-   - Choose "Start in test mode" for development
-   - Select a location (choose closest to your users)
-
-### Step 4: Test the Application
-
-After deploying the rules and enabling Google auth:
-
-1. **Start your development server**:
-   ```bash
-   npm run dev
-   ```
-
-2. **Test Google Sign-In**:
-   - Go to http://localhost:8083/auth/login
-   - Click "Sign in with Google"
-   - The authentication should now work
-
-### 🔒 Security Rules Explanation
-
-The `firestore.rules` file includes:
-
-- **Users**: Users can read/write their own data, admins can read all
-- **Referral Codes**: Anyone can read, authenticated users can write
-- **Products**: Anyone can read, only admins can write
-- **Orders**: Users can manage their own orders, admins can see all
-- **Admin Collections**: Only admins have access
-
-### 🚨 Troubleshooting
-
-**If you still get permission errors:**
-
-1. **Check Firebase Console**:
-   - Go to Firestore Database → Rules
-   - Verify the rules are deployed correctly
-
-2. **Check Authentication**:
-   - Go to Authentication → Users
-   - Verify users are being created
-
-3. **Check Console Logs**:
-   - Open browser developer tools
-   - Look for specific error messages
-
-4. **Test with Test Mode** (temporary):
-   ```javascript
-   // In firestore.rules, temporarily use:
-   rules_version = '2';
-   service cloud.firestore {
-     match /databases/{database}/documents {
-       match /{document=**} {
-         allow read, write: if true;
-       }
-     }
-   }
-   ```
-   ⚠️ **Warning**: This allows full access - only use for testing!
-
-### 📞 Support
-
-If you continue to have issues:
-
-1. Check the Firebase Console for specific error messages
-2. Verify your Firebase project configuration in `src/lib/firebase.ts`
-3. Ensure your domain is added to authorized domains in Firebase Console
-
-The application should now work with proper authentication and database permissions! 
+## Contact Information
+- Email: ultron.inov@gmail.com
+- Phone: +91 9156294374, +91 9307719509, +91 7517769211 

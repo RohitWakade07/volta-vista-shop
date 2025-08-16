@@ -5,8 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, AlertCircle } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowLeft, AlertCircle, Moon, Sun } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 
 const Login = () => {
@@ -19,6 +20,7 @@ const Login = () => {
   const [showGoogleHelp, setShowGoogleHelp] = useState(false);
   
   const { signIn, signInWithGoogle } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -31,7 +33,7 @@ const Login = () => {
       await signIn(email, password);
       toast({
         title: "Welcome back!",
-        description: "You have successfully logged in.",
+        description: `Successfully logged in as ${email}`,
       });
       navigate('/');
     } catch (error: any) {
@@ -49,7 +51,7 @@ const Login = () => {
       await signInWithGoogle();
       toast({
         title: "Welcome!",
-        description: "You have successfully signed in with Google.",
+        description: "Successfully signed in with Google.",
       });
       navigate('/');
     } catch (error: any) {
@@ -68,16 +70,29 @@ const Login = () => {
       <div className="w-full max-w-md">
         <Card className="shadow-xl">
           <CardHeader className="space-y-1">
-            <div className="flex items-center space-x-2">
-              <Link to="/" className="p-2 hover:bg-muted rounded-md transition-colors">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-              <div>
-                <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
-                <CardDescription>
-                  Sign in to your Volta Vista account
-                </CardDescription>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Link to="/" className="p-2 hover:bg-muted rounded-md transition-colors">
+                  <ArrowLeft className="h-4 w-4" />
+                </Link>
+                <div>
+                  <CardTitle className="text-2xl font-bold">Welcome back</CardTitle>
+                  <CardDescription>
+                    Sign in to your Ultron account
+                  </CardDescription>
+                </div>
               </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+              >
+                {theme === 'dark' ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
             </div>
           </CardHeader>
           

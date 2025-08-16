@@ -71,19 +71,55 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Fetch user profile from Firestore
           try {
             if (!db) {
-              console.error('Firebase db is not initialized');
-              setUserProfile(null);
+              console.warn('Firestore is not available. User profile will not be loaded.');
+              // Create a basic user profile from Firebase Auth user data
+              const basicProfile: UserProfile = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || '',
+                role: 'user',
+                referralCode: '',
+                referralCount: 0,
+                totalEarnings: 0,
+                createdAt: new Date(),
+                lastLogin: new Date()
+              };
+              setUserProfile(basicProfile);
               return;
             }
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
               setUserProfile(userDoc.data() as UserProfile);
+            } else {
+              // Create a basic profile if no Firestore document exists
+              const basicProfile: UserProfile = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || '',
+                role: 'user',
+                referralCode: '',
+                referralCount: 0,
+                totalEarnings: 0,
+                createdAt: new Date(),
+                lastLogin: new Date()
+              };
+              setUserProfile(basicProfile);
             }
           } catch (firestoreError: any) {
             console.error('Error fetching user profile:', firestoreError);
-            // Don't crash the app if Firestore fails
-            // Just set userProfile to null and continue
-            setUserProfile(null);
+            // Create a basic profile if Firestore fails
+            const basicProfile: UserProfile = {
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || '',
+              role: 'user',
+              referralCode: '',
+              referralCount: 0,
+              totalEarnings: 0,
+              createdAt: new Date(),
+              lastLogin: new Date()
+            };
+            setUserProfile(basicProfile);
           }
         } else {
           setUserProfile(null);

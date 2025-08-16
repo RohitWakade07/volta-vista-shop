@@ -1,8 +1,12 @@
-# Welcome to your Lovable project
+# Ultron Shop
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/4821d864-faba-41a8-abe7-8fed449e1c48
+
+## About Ultron Shop
+
+Ultron Shop is an e-commerce platform for electronic components, development kits, and tools designed for makers, engineers, and hobbyists. The platform offers a wide range of products including microcontrollers, motor drivers, prototyping tools, and more.
 
 ## How can I edit this code?
 

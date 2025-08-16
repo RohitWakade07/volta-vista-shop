@@ -5,13 +5,13 @@ import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBiJ6V-mz6vBEyXCu4jGexCdmpmISYoKRU",
-  authDomain: "ekart-e973c.firebaseapp.com",
-  projectId: "ekart-e973c",
-  storageBucket: "ekart-e973c.firebasestorage.app",
-  messagingSenderId: "389632569201",
-  appId: "1:389632569201:web:f91fb23af2d5d65e4a10d0",
-  measurementId: "G-PCE3XT16KC"
+  apiKey: "AIzaSyAFW9DjjBB2fKQLAs-QkVrMBO1eWTPJoSE",
+  authDomain: "ultroninov-a6a1e.firebaseapp.com",
+  projectId: "ultroninov-a6a1e",
+  storageBucket: "ultroninov-a6a1e.firebasestorage.app",
+  messagingSenderId: "105295407471",
+  appId: "1:105295407471:web:db0886b1c94aca05e1e09a",
+  measurementId: "G-7C90BZK7MB"
 };
 
 // Initialize Firebase with error handling
@@ -31,14 +31,33 @@ try {
   auth = getAuth(app);
   console.log('Firebase auth initialized'); // Debug log
   
-  db = getFirestore(app);
-  console.log('Firebase db initialized'); // Debug log
+  // Initialize Firestore with error handling
+  try {
+    db = getFirestore(app);
+    console.log('Firebase db initialized'); // Debug log
+  } catch (firestoreError) {
+    console.error('Firestore initialization error:', firestoreError);
+    console.warn('Firestore may not be enabled in your Firebase project. Please enable Firestore in the Firebase Console.');
+    db = null;
+  }
   
-  storage = getStorage(app);
-  console.log('Firebase storage initialized'); // Debug log
+  // Initialize Storage with error handling
+  try {
+    storage = getStorage(app);
+    console.log('Firebase storage initialized'); // Debug log
+  } catch (storageError) {
+    console.error('Storage initialization error:', storageError);
+    storage = null;
+  }
   
-  analytics = getAnalytics(app);
-  console.log('Firebase analytics initialized'); // Debug log
+  // Initialize Analytics with error handling
+  try {
+    analytics = getAnalytics(app);
+    console.log('Firebase analytics initialized'); // Debug log
+  } catch (analyticsError) {
+    console.error('Analytics initialization error:', analyticsError);
+    analytics = null;
+  }
   
   console.log('Firebase initialized successfully'); // Debug log
 } catch (error) {

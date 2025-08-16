@@ -19,9 +19,12 @@ import {
   AlertCircle,
   Package,
   Truck,
-  CheckCircle
+  CheckCircle,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentService } from '@/services/paymentService';
 import { Order } from '@/types';
@@ -35,7 +38,8 @@ interface Referral {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout, loading: authLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [referrals, setReferrals] = useState<Referral[]>([]);
@@ -43,6 +47,18 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [logoutLoading, setLogoutLoading] = useState(false);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !currentUser) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to access your profile.",
+        variant: "destructive"
+      });
+      navigate('/auth/login');
+    }
+  }, [currentUser, authLoading, navigate, toast]);
 
   // Fetch user orders from Firebase
   useEffect(() => {
@@ -57,33 +73,8 @@ const Profile = () => {
         setOrders(userOrders);
       } catch (error) {
         console.error('Error fetching orders:', error);
-        // Keep mock data for now if Firebase fails
-        setOrders([
-          {
-            id: 'ORD-001',
-            userId: userProfile.uid,
-            date: new Date('2024-01-15'),
-            status: 'delivered',
-            total: 89.99,
-            items: [
-              { id: '1', name: 'Arduino Uno R3', quantity: 2, price: 24.99 },
-              { id: '2', name: 'Motor Driver L298N', quantity: 1, price: 8.99 },
-              { id: '3', name: 'Breadboard 830 Point', quantity: 1, price: 5.99 }
-            ],
-            paymentStatus: 'completed',
-            paymentMethod: 'phonepe',
-            createdAt: new Date('2024-01-15'),
-            updatedAt: new Date('2024-01-15'),
-            shippingAddress: {
-              name: 'John Doe',
-              phone: '+91 9876543210',
-              address: '123 Main St',
-              city: 'Mumbai',
-              state: 'Maharashtra',
-              pincode: '400001'
-            }
-          }
-        ]);
+        // Set empty array if Firebase fails
+        setOrders([]);
       } finally {
         setOrdersLoading(false);
       }
@@ -92,22 +83,10 @@ const Profile = () => {
     fetchOrders();
   }, [userProfile?.uid]);
 
-  // Mock referrals data (replace with Firebase data later)
+  // Fetch referrals data from Firebase (placeholder for now)
   useEffect(() => {
-    setReferrals([
-      {
-        email: 'john@example.com',
-        displayName: 'John Doe',
-        date: new Date('2024-01-20'),
-        status: 'completed'
-      },
-      {
-        email: 'jane@example.com',
-        displayName: 'Jane Smith',
-        date: new Date('2024-01-25'),
-        status: 'pending'
-      }
-    ]);
+    // TODO: Implement Firebase referrals fetching
+    setReferrals([]);
     setLoading(false);
   }, []);
 
@@ -175,6 +154,30 @@ const Profile = () => {
     }
   };
 
+  // Show loading state while authentication is being checked
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading your profile...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state if user is not authenticated
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -215,9 +218,14 @@ const Profile = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <div className="container mx-auto p-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">My Profile</h1>
-          <p className="text-muted-foreground">Manage your account and view your activity</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">My Profile</h1>
+            <p className="text-muted-foreground">Manage your account and view your activity</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/')}>
+            ← Back to Home
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -267,9 +275,26 @@ const Profile = () => {
                     <div className="text-xs text-muted-foreground">Referrals</div>
                   </div>
                   <div className="text-center p-3 bg-muted rounded-lg">
-                    <div className="text-2xl font-bold text-primary">${userProfile.totalEarnings}</div>
+                    <div className="text-2xl font-bold text-primary">₹{userProfile.totalEarnings}</div>
                     <div className="text-xs text-muted-foreground">Earnings</div>
                   </div>
+                </div>
+
+                {/* Theme Toggle */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Theme</label>
+                  <Button 
+                    variant="outline" 
+                    className="w-full justify-between" 
+                    onClick={toggleTheme}
+                  >
+                    <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                    {theme === 'dark' ? (
+                      <Moon className="h-4 w-4" />
+                    ) : (
+                      <Sun className="h-4 w-4" />
+                    )}
+                  </Button>
                 </div>
 
                 <Button 
@@ -342,14 +367,14 @@ const Profile = () => {
                                 <Badge variant="outline" className={getPaymentStatusColor(order.paymentStatus)}>
                                   {order.paymentStatus}
                                 </Badge>
-                                <span className="font-semibold">₹{(order.total * 83).toFixed(2)}</span>
+                                                                 <span className="font-semibold">₹{order.total}</span>
                               </div>
                             </div>
                             <div className="space-y-2">
                               {order.items.map((item, index) => (
                                 <div key={index} className="flex justify-between text-sm">
                                   <span>{item.name} x{item.quantity}</span>
-                                  <span>₹{(item.price * 83).toFixed(2)}</span>
+                                                                     <span>₹{item.price}</span>
                                 </div>
                               ))}
                             </div>
