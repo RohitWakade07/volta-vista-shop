@@ -25,6 +25,8 @@ export interface Order {
     pincode: string;
   };
   trackingNumber?: string;
+  promoCode?: string;
+  discount?: number;
 }
 
 export interface PaymentDetails {
@@ -63,7 +65,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   displayName: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'superadmin';
   referralCode: string;
   referredBy?: string;
   referralCount: number;

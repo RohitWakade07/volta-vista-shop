@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
+import type { UserProfile } from '@/types';
 
 interface AuthContextType {
   currentUser: User | null;
@@ -25,18 +26,7 @@ interface AuthContextType {
   resetPassword: (email: string) => Promise<void>;
 }
 
-interface UserProfile {
-  uid: string;
-  email: string;
-  displayName: string;
-  role: 'user' | 'admin';
-  referralCode: string;
-  referredBy?: string;
-  referralCount: number;
-  totalEarnings: number;
-  createdAt: Date;
-  lastLogin: Date;
-}
+// Using shared UserProfile from src/types to keep fields (phone, address) consistent across app
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -89,14 +79,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
-              setUserProfile(userDoc.data() as UserProfile);
+              const data = userDoc.data() as UserProfile;
+              // Elevate role if Google email is super admin
+              const role = (user.email === 'ultron.inov@gmail.com') ? 'superadmin' : (data.role || 'user');
+              setUserProfile({ ...data, role });
             } else {
               // Create a basic profile if no Firestore document exists
               const basicProfile: UserProfile = {
                 uid: user.uid,
                 email: user.email || '',
                 displayName: user.displayName || '',
-                role: 'user',
+                role: (user.email === 'ultron.inov@gmail.com') ? 'superadmin' : 'user',
                 referralCode: '',
                 referralCount: 0,
                 totalEarnings: 0,

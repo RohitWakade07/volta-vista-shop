@@ -50,6 +50,7 @@ const PaymentTest = () => {
       
       // Update order status
       await PaymentService.processPaymentSuccess(orderId, `TXN_${Date.now()}`);
+      try { localStorage.removeItem('vv_cart'); } catch {}
       
       setPaymentStatus('success');
       
@@ -58,9 +59,9 @@ const PaymentTest = () => {
         description: "Your order has been placed successfully.",
       });
 
-      // Redirect to home page after 3 seconds
+      // Redirect to order details after 3 seconds
       setTimeout(() => {
-        navigate('/');
+        navigate(`/orders/${orderId}`);
       }, 3000);
 
     } catch (error: any) {
@@ -138,7 +139,7 @@ const PaymentTest = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Amount:</span>
-                  <span className="font-bold">₹{(parseFloat(amount) * 83).toFixed(2)}</span>
+                  <span className="font-bold">₹{Number(amount).toFixed(0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Payment Method:</span>
@@ -176,7 +177,7 @@ const PaymentTest = () => {
                       ) : (
                         <>
                           <CreditCard className="h-4 w-4 mr-2" />
-                          Pay ₹{(parseFloat(amount) * 83).toFixed(2)}
+                          Pay ₹{Number(amount).toFixed(0)}
                         </>
                       )}
                     </Button>

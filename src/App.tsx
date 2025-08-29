@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -12,9 +12,12 @@ import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
 import Dashboard from '@/pages/admin/Dashboard';
 import Products from '@/pages/admin/Products';
+import OrdersAdmin from '@/pages/admin/Orders';
 import Profile from '@/pages/Profile';
 import Checkout from '@/pages/Checkout';
 import PaymentTest from '@/pages/PaymentTest';
+import OrderDetails from '@/pages/OrderDetails';
+import Cart from '@/pages/Cart';
 
 const queryClient = new QueryClient();
 
@@ -44,9 +47,15 @@ function App() {
                     <Dashboard />
                   </ProtectedRoute>
                 } />
+                <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
                 <Route path="/admin/products" element={
                   <ProtectedRoute>
                     <Products />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/orders" element={
+                  <ProtectedRoute>
+                    <OrdersAdmin />
                   </ProtectedRoute>
                 } />
                 <Route path="/profile" element={
@@ -59,7 +68,9 @@ function App() {
                     <Checkout />
                   </ProtectedRoute>
                 } />
+                <Route path="/cart" element={<Cart />} />
                 <Route path="/payment/test" element={<PaymentTest />} />
+                <Route path="/orders/:id" element={<OrderDetails />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />

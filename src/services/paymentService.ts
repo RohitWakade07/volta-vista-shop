@@ -1,4 +1,4 @@
-import { collection, addDoc, updateDoc, doc, getDocs, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order, PaymentDetails, PhonePePayment } from '@/types';
 
@@ -17,8 +17,8 @@ export class PaymentService {
       merchantId: PHONEPE_CONFIG.merchantId,
       merchantTransactionId: order.id,
       amount: order.total * 100, // Amount in paise
-      redirectUrl: `${window.location.origin}/payment/success`,
-      callbackUrl: `${window.location.origin}/payment/callback`,
+      redirectUrl: `${window.location.origin}/orders/${order.id}`,
+      callbackUrl: `${window.location.origin}/orders/${order.id}`,
       merchantUserId: order.userId,
       mobileNumber: order.shippingAddress.phone,
       paymentInstrument: {
@@ -77,23 +77,38 @@ export class PaymentService {
   // Get user orders
   static async getUserOrders(userId: string): Promise<Order[]> {
     try {
-      const q = query(
-        collection(db, 'orders'),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
-      );
+      const q = query(collection(db, 'orders'), where('userId', '==', userId));
       
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({
+      const orders = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         updatedAt: doc.data().updatedAt?.toDate() || new Date(),
       })) as Order[];
+      // Sort client-side to avoid composite index requirement
+      orders.sort((a, b) => (b.createdAt as any) - (a.createdAt as any));
+      return orders;
     } catch (error) {
       console.error('Error fetching user orders:', error);
       throw new Error('Failed to fetch orders');
     }
+  }
+
+  // Realtime subscription to user orders
+  static subscribeUserOrders(userId: string, onUpdate: (orders: Order[]) => void): () => void {
+    const q = query(collection(db, 'orders'), where('userId', '==', userId));
+    const unsub = onSnapshot(q, (snap) => {
+      const orders = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate() || new Date(),
+        updatedAt: d.data().updatedAt?.toDate() || new Date(),
+      })) as Order[];
+      orders.sort((a, b) => (b.createdAt as any) - (a.createdAt as any));
+      onUpdate(orders);
+    });
+    return unsub;
   }
 
   // Create payment record

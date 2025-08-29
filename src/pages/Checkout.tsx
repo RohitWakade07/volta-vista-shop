@@ -31,6 +31,8 @@ const Checkout = () => {
   const [loading, setLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
   const [error, setError] = useState('');
+  const [promoCode, setPromoCode] = useState('');
+  const [discount, setDiscount] = useState(0);
   
   // Form state
   const [formData, setFormData] = useState({
@@ -42,29 +44,46 @@ const Checkout = () => {
     pincode: userProfile?.address?.pincode || '',
   });
 
-  // Mock cart items (in real app, this would come from cart context)
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: '1',
-      name: 'Arduino Uno R3',
-      price: 24.99,
-      quantity: 2,
-      image: '/placeholder.svg',
-      inStock: true
-    },
-    {
-      id: '2',
-      name: 'Motor Driver L298N',
-      price: 8.99,
-      quantity: 1,
-      image: '/placeholder.svg',
-      inStock: true
+  // Load cart items dynamically from localStorage (populated by product pages)
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('vv_cart');
+      if (stored) {
+        const parsed = JSON.parse(stored) as CartItem[];
+        setCartItems(parsed);
+      }
+      const storedPromo = localStorage.getItem('vv_promo');
+      if (storedPromo) {
+        setPromoCode(storedPromo);
+      }
+    } catch {
+      // ignore parse errors
     }
-  ]);
+  }, []);
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const shipping = 5.99;
-  const total = subtotal + shipping;
+  const shipping = 0; // Shipping disabled for now
+  const total = Math.max(0, subtotal + shipping - discount);
+
+  const computeDiscount = (items: CartItem[], codeRaw: string) => {
+    const code = (codeRaw || '').trim().toUpperCase();
+    if (code === 'FRESHERS2025') {
+      const kit = items.find(i => i.name.toLowerCase().includes('arduino kit'));
+      if (kit) {
+        const kitTotal = kit.price * kit.quantity;
+        const desired = 1249 * kit.quantity;
+        return Math.max(0, kitTotal - desired);
+      }
+      return 250;
+    }
+    return 0;
+  };
+
+  useEffect(() => {
+    setDiscount(computeDiscount(cartItems, promoCode));
+  }, [cartItems, promoCode]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
@@ -109,6 +128,8 @@ const Checkout = () => {
         status: 'pending',
         paymentStatus: 'pending',
         paymentMethod: 'phonepe',
+        promoCode: promoCode.trim().toUpperCase() || undefined,
+        discount,
         shippingAddress: {
           name: formData.name,
           phone: formData.phone,
@@ -120,6 +141,8 @@ const Checkout = () => {
       };
 
       const orderId = await PaymentService.createOrder(orderData);
+      // Clear cart storage now that an order exists
+      try { localStorage.removeItem('vv_cart'); } catch {}
       
       // Generate PhonePe payment URL
       const paymentUrl = await PaymentService.createPhonePePayment({
@@ -174,7 +197,9 @@ const Checkout = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {cartItems.map((item) => (
+                {cartItems.length === 0 ? (
+                  <div className="text-sm text-muted-foreground">Your cart is empty. <Button variant="link" onClick={() => navigate('/')}>Continue shopping</Button></div>
+                ) : cartItems.map((item) => (
                   <div key={item.id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
@@ -186,8 +211,8 @@ const Checkout = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">${(item.price * item.quantity).toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">${item.price} each</p>
+                      <p className="font-medium">₹{(item.price * item.quantity).toFixed(0)}</p>
+                      <p className="text-sm text-muted-foreground">₹{item.price} each</p>
                     </div>
                   </div>
                 ))}
@@ -195,15 +220,15 @@ const Checkout = () => {
                 <div className="border-t pt-4 space-y-2">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${subtotal.toFixed(2)}</span>
+                    <span>₹{subtotal.toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
-                    <span>${shipping.toFixed(2)}</span>
+                    <span>₹{shipping.toFixed(0)}</span>
                   </div>
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span>${total.toFixed(2)}</span>
+                    <span>₹{total.toFixed(0)}</span>
                   </div>
                 </div>
               </CardContent>
@@ -227,6 +252,21 @@ const Checkout = () => {
                     <p className="text-sm text-muted-foreground">Pay securely with PhonePe</p>
                   </div>
                   <Badge variant="secondary" className="ml-auto">Recommended</Badge>
+                </div>
+
+                {/* Promo Code */}
+                <div className="mt-4 space-y-2">
+                  <Label htmlFor="promo">Promo Code</Label>
+                  <div className="flex gap-2">
+                    <Input id="promo" value={promoCode} onChange={(e) => {
+                      setPromoCode(e.target.value);
+                      try { localStorage.setItem('vv_promo', e.target.value); } catch {}
+                    }} placeholder="Enter promo code" />
+                    <Button type="button" onClick={() => setPromoCode(promoCode.trim().toUpperCase())}>Apply</Button>
+                  </div>
+                  {discount > 0 && (
+                    <p className="text-sm text-green-600">Discount applied: ₹{discount.toFixed(0)}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -344,7 +384,7 @@ const Checkout = () => {
                   ) : (
                     <>
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Proceed to Pay ₹{(total * 83).toFixed(2)}
+                      Proceed to Pay ₹{total.toFixed(0)}
                     </>
                   )}
                 </Button>

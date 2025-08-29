@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,59 +13,20 @@ import {
   Filter
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  description: string;
-  category: string;
-  inStock: boolean;
-  rating: number;
-  reviews: number;
-  isNew?: boolean;
-  isFeatured?: boolean;
-}
+import { useAuth } from '@/contexts/AuthContext';
+import { ProductService, AdminProduct } from '@/services/productService';
 
 const Products = () => {
   const { toast } = useToast();
-  const [products, setProducts] = useState<Product[]>([
-    {
-      id: "1",
-      name: "Arduino Uno R3",
-      price: 24.99,
-      originalPrice: 29.99,
-      description: "Microcontroller board based on the ATmega328P with 14 digital I/O pins",
-      category: "Microcontrollers",
-      inStock: true,
-      rating: 4.8,
-      reviews: 1247,
-      isFeatured: true
-    },
-    {
-      id: "2", 
-      name: "Motor Driver L298N",
-      price: 8.99,
-      description: "Dual H-Bridge Motor Driver for DC and Stepper Motors with 2A current capacity",
-      category: "Motor Drivers",
-      inStock: true,
-      rating: 4.6,
-      reviews: 892
-    },
-    {
-      id: "3",
-      name: "Breadboard 830 Point",
-      price: 5.99,
-      description: "Solderless breadboard for prototyping circuits with power rails",
-      category: "Prototyping",
-      inStock: true,
-      rating: 4.7,
-      reviews: 1563
-    }
-  ]);
+  const { userProfile } = useAuth();
+  const [products, setProducts] = useState<AdminProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+
+  useEffect(() => {
+    const unsub = ProductService.subscribeProducts(setProducts);
+    return () => unsub();
+  }, []);
 
   const categories = [
     { id: 'all', name: 'All Categories' },
@@ -85,23 +46,28 @@ const Products = () => {
     return matchesSearch && matchesCategory;
   });
 
-  const handleDeleteProduct = (productId: string) => {
-    setProducts(prev => prev.filter(p => p.id !== productId));
-    toast({
-      title: "Product deleted",
-      description: "Product has been removed successfully.",
-    });
+  const handleDeleteProduct = async (productId: string) => {
+    await ProductService.deleteProduct(productId);
+    toast({ title: 'Product deleted', description: 'Product has been removed successfully.' });
   };
 
-  const handleToggleStock = (productId: string) => {
-    setProducts(prev => prev.map(p => 
-      p.id === productId ? { ...p, inStock: !p.inStock } : p
-    ));
-    toast({
-      title: "Stock updated",
-      description: "Product stock status has been updated.",
-    });
+  const handleToggleStock = async (productId: string, current: boolean) => {
+    await ProductService.updateProduct(productId, { inStock: !current });
+    toast({ title: 'Stock updated', description: 'Product stock status has been updated.' });
   };
+
+  if (userProfile?.role !== 'admin' && userProfile?.role !== 'superadmin') {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">Access Denied</CardTitle>
+            <CardDescription className="text-center">You don't have permission to access this page.</CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -202,7 +168,7 @@ const Products = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleToggleStock(product.id)}
+                      onClick={() => handleToggleStock(product.id, product.inStock)}
                     >
                       {product.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
                     </Button>

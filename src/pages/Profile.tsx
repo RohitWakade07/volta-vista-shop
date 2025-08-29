@@ -60,27 +60,18 @@ const Profile = () => {
     }
   }, [currentUser, authLoading, navigate, toast]);
 
-  // Fetch user orders from Firebase
+  // Subscribe to user orders in realtime
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!userProfile?.uid) {
-        setOrdersLoading(false);
-        return;
-      }
-
-      try {
-        const userOrders = await PaymentService.getUserOrders(userProfile.uid);
-        setOrders(userOrders);
-      } catch (error) {
-        console.error('Error fetching orders:', error);
-        // Set empty array if Firebase fails
-        setOrders([]);
-      } finally {
-        setOrdersLoading(false);
-      }
-    };
-
-    fetchOrders();
+    if (!userProfile?.uid) {
+      setOrdersLoading(false);
+      return;
+    }
+    setOrdersLoading(true);
+    const unsub = PaymentService.subscribeUserOrders(userProfile.uid, (os) => {
+      setOrders(os);
+      setOrdersLoading(false);
+    });
+    return () => unsub();
   }, [userProfile?.uid]);
 
   // Fetch referrals data from Firebase (placeholder for now)
@@ -223,9 +214,14 @@ const Profile = () => {
             <h1 className="text-3xl font-bold">My Profile</h1>
             <p className="text-muted-foreground">Manage your account and view your activity</p>
           </div>
-          <Button variant="outline" onClick={() => navigate('/')}>
-            ← Back to Home
-          </Button>
+          <div className="flex items-center gap-2">
+            {userProfile.role === 'superadmin' && (
+              <Button variant="outline" onClick={() => navigate('/admin/dashboard')}>
+                Admin Panel
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => navigate('/')}>← Back to Home</Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -367,14 +363,17 @@ const Profile = () => {
                                 <Badge variant="outline" className={getPaymentStatusColor(order.paymentStatus)}>
                                   {order.paymentStatus}
                                 </Badge>
-                                                                 <span className="font-semibold">₹{order.total}</span>
+                                <span className="font-semibold">₹{order.total}</span>
+                                <Button size="sm" variant="outline" onClick={() => navigate(`/orders/${order.id}`)}>
+                                  View details
+                                </Button>
                               </div>
                             </div>
                             <div className="space-y-2">
                               {order.items.map((item, index) => (
                                 <div key={index} className="flex justify-between text-sm">
                                   <span>{item.name} x{item.quantity}</span>
-                                                                     <span>₹{item.price}</span>
+                                  <span>₹{(item.price * item.quantity).toFixed(0)}</span>
                                 </div>
                               ))}
                             </div>

@@ -68,7 +68,7 @@ const Dashboard = () => {
     }, 1000);
   };
 
-  if (userProfile?.role !== 'admin') {
+  if (userProfile?.role !== 'admin' && userProfile?.role !== 'superadmin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Card className="w-full max-w-md">
