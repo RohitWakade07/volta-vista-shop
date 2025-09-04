@@ -22,6 +22,17 @@ const Products = () => {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [creating, setCreating] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '',
+    price: '',
+    originalPrice: '',
+    image: '',
+    description: '',
+    category: 'Microcontrollers',
+    inStock: true,
+  });
+  const [editId, setEditId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = ProductService.subscribeProducts(setProducts);
@@ -56,6 +67,41 @@ const Products = () => {
     toast({ title: 'Stock updated', description: 'Product stock status has been updated.' });
   };
 
+  const handleCreate = async () => {
+    if (!newProduct.name.trim() || !newProduct.price) {
+      toast({ title: 'Missing fields', description: 'Name and price are required.' });
+      return;
+    }
+    setCreating(true);
+    try {
+      const payload = {
+        name: newProduct.name.trim(),
+        price: Number(newProduct.price),
+        originalPrice: newProduct.originalPrice ? Number(newProduct.originalPrice) : undefined,
+        image: newProduct.image || 'https://via.placeholder.com/400x300',
+        description: newProduct.description.trim() || '—',
+        category: newProduct.category,
+        inStock: true,
+        rating: 0,
+        reviews: 0,
+        isNew: true,
+        isFeatured: false,
+      } as any;
+      if (editId) {
+        await ProductService.updateProduct(editId, payload);
+      } else {
+        await ProductService.addProduct(payload);
+      }
+      setNewProduct({ name: '', price: '', originalPrice: '', image: '', description: '', category: 'Microcontrollers', inStock: true });
+      setEditId(null);
+      toast({ title: 'Product added', description: 'Product has been created.' });
+    } catch (e: any) {
+      toast({ title: 'Failed to add', description: e.message || 'Please try again', variant: 'destructive' });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (userProfile?.role !== 'admin' && userProfile?.role !== 'superadmin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -78,44 +124,66 @@ const Products = () => {
             <h1 className="text-3xl font-bold">Product Management</h1>
             <p className="text-muted-foreground">Manage your store's products</p>
           </div>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Product
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleCreate} disabled={creating}>
+              <Plus className="h-4 w-4 mr-2" />
+              {editId ? 'Update Product' : (creating ? 'Creating...' : 'Add Product')}
+            </Button>
+            {editId && (
+              <Button variant="outline" onClick={() => { setEditId(null); setNewProduct({ name: '', price: '', originalPrice: '', image: '', description: '', category: 'Microcontrollers', inStock: true }); }}>Cancel</Button>
+            )}
+          </div>
         </div>
 
-        {/* Filters */}
+        {/* Create + Filters */}
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Filters</CardTitle>
+            <CardTitle>Add New Product</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div>
+                <Label htmlFor="np-name">Name</Label>
+                <Input id="np-name" value={newProduct.name} onChange={(e) => setNewProduct(p => ({ ...p, name: e.target.value }))} />
+              </div>
+              <div>
+                <Label htmlFor="np-category">Category</Label>
+                <select id="np-category" value={newProduct.category} onChange={(e) => setNewProduct(p => ({ ...p, category: e.target.value }))} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  {categories.filter(c => c.id !== 'all').map(c => (<option key={c.id} value={c.id}>{c.name}</option>))}
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="np-price">Price (₹)</Label>
+                <Input id="np-price" type="number" value={newProduct.price} onChange={(e) => setNewProduct(p => ({ ...p, price: e.target.value }))} />
+              </div>
+              <div>
+                <Label htmlFor="np-op">Original Price (₹)</Label>
+                <Input id="np-op" type="number" value={newProduct.originalPrice} onChange={(e) => setNewProduct(p => ({ ...p, originalPrice: e.target.value }))} />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="np-image">Image URL</Label>
+                <Input id="np-image" value={newProduct.image} onChange={(e) => setNewProduct(p => ({ ...p, image: e.target.value }))} placeholder="https://..." />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="np-desc">Description</Label>
+                <Input id="np-desc" value={newProduct.description} onChange={(e) => setNewProduct(p => ({ ...p, description: e.target.value }))} />
+              </div>
+            </div>
+
+            <CardTitle className="mt-6 mb-2">Filters</CardTitle>
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1">
                 <Label htmlFor="search">Search Products</Label>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
-                    placeholder="Search by name or description..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
+                  <Input id="search" placeholder="Search by name or description..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
                 </div>
               </div>
               <div className="flex-1">
                 <Label htmlFor="category">Category</Label>
-                <select
-                  id="category"
-                  value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
+                <select id="category" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
+                    <option key={category.id} value={category.id}>{category.name}</option>
                   ))}
                 </select>
               </div>
@@ -155,10 +223,10 @@ const Products = () => {
                     </div>
                     
                     <div className="flex items-center space-x-2 mt-2">
-                      <span className="text-lg font-bold text-primary">${product.price}</span>
+                      <span className="text-lg font-bold text-primary">₹{product.price}</span>
                       {product.originalPrice && (
                         <span className="text-sm text-muted-foreground line-through">
-                          ${product.originalPrice}
+                          ₹{product.originalPrice}
                         </span>
                       )}
                     </div>
@@ -172,7 +240,7 @@ const Products = () => {
                     >
                       {product.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
                     </Button>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => { setEditId(product.id); setNewProduct({ name: product.name, price: String(product.price), originalPrice: product.originalPrice ? String(product.originalPrice) : '', image: product.image, description: product.description, category: product.category, inStock: product.inStock }); }}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 
@@ -181,6 +249,12 @@ const Products = () => {
                       onClick={() => handleDeleteProduct(product.id)}
                     >
                       <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button variant={product.isFeatured ? 'default' : 'outline'} size="sm" onClick={() => ProductService.updateProduct(product.id, { isFeatured: !product.isFeatured })}>
+                      {product.isFeatured ? 'Featured' : 'Mark Featured'}
+                    </Button>
+                    <Button variant={product.originalPrice ? 'default' : 'outline'} size="sm" onClick={() => ProductService.updateProduct(product.id, { originalPrice: product.originalPrice ? undefined : Math.round(product.price * 1.2) })}>
+                      {product.originalPrice ? 'Clear Sale' : 'Add Sale'}
                     </Button>
                   </div>
                 </div>

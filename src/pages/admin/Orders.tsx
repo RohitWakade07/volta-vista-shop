@@ -24,13 +24,8 @@ const OrdersAdmin = () => {
   }
 
   useEffect(() => {
-    // subscribe to all orders for admin
-    const unsub = PaymentService.subscribeUserOrders ? undefined : undefined;
-    // Fallback: one-time fetch of all orders for dashboard (admin only)
-    (async () => {
-      // simple fetch: getUserOrders per user is not available; reuse payments service query for all is not present
-      // For brevity in this implementation, we'll reuse getUserOrders with current user to avoid adding wide-open queries.
-    })();
+    const unsub = PaymentService.subscribeAllOrders((os) => setOrders(os));
+    return () => unsub();
   }, []);
 
   // For this simplified version, we'll allow manual search/filter on existing `orders` if provided via another route

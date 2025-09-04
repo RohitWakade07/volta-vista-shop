@@ -53,6 +53,9 @@ function App() {
                     <Products />
                   </ProtectedRoute>
                 } />
+                {/* Convenience redirects to handle common/uppercase paths */}
+                <Route path="/products" element={<Navigate to="/admin/products" replace />} />
+                <Route path="/Products" element={<Navigate to="/admin/products" replace />} />
                 <Route path="/admin/orders" element={
                   <ProtectedRoute>
                     <OrdersAdmin />

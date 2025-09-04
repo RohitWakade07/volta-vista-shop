@@ -1,3 +1,16 @@
+# Secrets
+*.json
+!firebase.json
+
+# Node
+node_modules/
+dist/
+.env*
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+*.log
 # Logs
 logs
 *.log

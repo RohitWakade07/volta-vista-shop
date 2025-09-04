@@ -1,4 +1,4 @@
-import { collection, addDoc, updateDoc, doc, getDocs, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDocs, query, where, onSnapshot, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Order, PaymentDetails, PhonePePayment } from '@/types';
 
@@ -106,6 +106,21 @@ export class PaymentService {
         updatedAt: d.data().updatedAt?.toDate() || new Date(),
       })) as Order[];
       orders.sort((a, b) => (b.createdAt as any) - (a.createdAt as any));
+      onUpdate(orders);
+    });
+    return unsub;
+  }
+
+  // Realtime subscription to all orders (admin use)
+  static subscribeAllOrders(onUpdate: (orders: Order[]) => void): () => void {
+    const q = query(collection(db, 'orders'), orderBy('createdAt', 'desc'));
+    const unsub = onSnapshot(q, (snap) => {
+      const orders = snap.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        createdAt: d.data().createdAt?.toDate() || new Date(),
+        updatedAt: d.data().updatedAt?.toDate() || new Date(),
+      })) as Order[];
       onUpdate(orders);
     });
     return unsub;

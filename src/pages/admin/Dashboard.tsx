@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import { 
   Users, 
   ShoppingCart, 
@@ -15,6 +16,12 @@ import {
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import app from '@/lib/firebase';
+import { PaymentService } from '@/services/paymentService';
+import { ProductService } from '@/services/productService';
+import { Order } from '@/types';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface DashboardStats {
   totalUsers: number;
@@ -37,21 +44,55 @@ const Dashboard = () => {
     averageOrderValue: 0
   });
   const [loading, setLoading] = useState(true);
-
+  // subscribe realtime
+  const [orders, setOrders] = useState<Order[]>([]);
   useEffect(() => {
-    // Simulate loading data
-    setTimeout(() => {
-      setStats({
-        totalUsers: 1247,
-        totalOrders: 892,
-        totalRevenue: 45678,
-        totalProducts: 156,
-        monthlyGrowth: 12.5,
-        averageOrderValue: 51.23
-      });
-      setLoading(false);
-    }, 1000);
+    const unsubProducts = ProductService.subscribeProducts((items) => {
+      setStats(prev => ({ ...prev, totalProducts: items.length }));
+    });
+    const unsubOrders = PaymentService.subscribeAllOrders((os) => {
+      setOrders(os);
+      const totalRevenue = os.reduce((s, o) => s + (o.total || 0), 0);
+      setStats(prev => ({ ...prev, totalOrders: os.length, totalRevenue }));
+    });
+    return () => { unsubProducts(); unsubOrders(); };
   }, []);
+
+  // fetch total users via callable function (only super admin gets a value)
+  useEffect(() => {
+    (async () => {
+      try {
+        const functions = getFunctions(app as any);
+        const callable: any = httpsCallable(functions, 'getUserCount');
+        const res: any = await callable({});
+        const count = res?.data?.count;
+        if (typeof count === 'number') {
+          setStats(prev => ({ ...prev, totalUsers: count }));
+        }
+      } catch (e) {
+        // ignore if not authorized
+      }
+    })();
+  }, []);
+
+  // chart data
+  const [dateFrom, setDateFrom] = useState<string>("");
+  const [dateTo, setDateTo] = useState<string>("");
+
+  const chartData = orders.reduce<Record<string, { date: string; revenue: number }>>((acc, o) => {
+    const d = new Date(o.createdAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (!acc[key]) acc[key] = { date: key, revenue: 0 };
+    acc[key].revenue += o.total || 0;
+    return acc;
+  }, {});
+  let chartList = Object.values(chartData).sort((a, b) => a.date.localeCompare(b.date));
+  if (dateFrom) {
+    chartList = chartList.filter(p => p.date >= dateFrom);
+  }
+  if (dateTo) {
+    chartList = chartList.filter(p => p.date <= dateTo);
+  }
 
   const handleRefresh = () => {
     setLoading(true);
@@ -132,7 +173,7 @@ const Dashboard = () => {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${stats.totalRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 +12.3% from last month
               </p>
@@ -198,35 +239,31 @@ const Dashboard = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                  <CardDescription>Common admin tasks</CardDescription>
+                  <CardTitle>Sales (INR)</CardTitle>
+                  <CardDescription>Daily revenue</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                                         <Button variant="outline" className="h-20">
-                       <div className="text-center">
-                         <Package className="h-6 w-6 mx-auto mb-2" />
-                         <span className="text-sm">Manage Products</span>
-                       </div>
-                     </Button>
-                    <Button variant="outline" className="h-20">
-                      <div className="text-center">
-                        <Users className="h-6 w-6 mx-auto mb-2" />
-                        <span className="text-sm">Manage Users</span>
-                      </div>
-                    </Button>
-                    <Button variant="outline" className="h-20">
-                      <div className="text-center">
-                        <ShoppingCart className="h-6 w-6 mx-auto mb-2" />
-                        <span className="text-sm">View Orders</span>
-                      </div>
-                    </Button>
-                    <Button variant="outline" className="h-20">
-                      <div className="text-center">
-                        <Download className="h-6 w-6 mx-auto mb-2" />
-                        <span className="text-sm">Export Data</span>
-                      </div>
-                    </Button>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">From</span>
+                      <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="h-8 w-36" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">To</span>
+                      <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="h-8 w-36" />
+                    </div>
+                    <Button variant="outline" className="h-8" onClick={() => { setDateFrom(""); setDateTo(""); }}>Clear</Button>
+                  </div>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={chartList} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                        <YAxis tickFormatter={(v) => `₹${v}`} width={60} />
+                        <Tooltip formatter={(v: any) => `₹${v}`} />
+                        <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
                   </div>
                 </CardContent>
               </Card>

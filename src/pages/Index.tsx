@@ -10,6 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { ProductService } from '@/services/productService';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Product {
   id: string;
@@ -24,6 +26,9 @@ interface Product {
   reviews: number;
   isNew?: boolean;
   isFeatured?: boolean;
+  images?: string[];
+  boxContents?: string[];
+  warranty?: string | null;
 }
 
 interface CartItem extends Product {
@@ -48,6 +53,8 @@ const Index = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const [products, setProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -66,177 +73,12 @@ const Index = () => {
 
   // Load products from Firebase (mock data for now)
   useEffect(() => {
-    console.log('Index useEffect running...'); // Debug log
-    const loadProducts = async () => {
-      try {
-        // Simulate loading from Firebase
-        setTimeout(() => {
-          const mockProducts: Product[] = [
-            {
-              id: "13",
-              name: "Arduino Kit Offer (Freshers)",
-              price: 1499,
-              originalPrice: 1599,
-              image: "https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Special starter kit for freshers. Apply promo code FRESHERS2025 to get ₹1249 price. Includes ebook for building projects, 24/7 customer & project support, and Free Soldering Anytime.",
-              category: "Kits",
-              inStock: true,
-              rating: 4.9,
-              reviews: 312,
-              isNew: true,
-              isFeatured: true
-            },
-            {
-              id: "1",
-              name: "Arduino Uno R3",
-              price: 350, // Robu ~₹300 + ₹50
-              originalPrice: 1099,
-              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Microcontroller board based on the ATmega328P with 14 digital I/O pins, perfect for beginners and advanced projects",
-              category: "Microcontrollers",
-              inStock: true,
-              rating: 4.8,
-              reviews: 1247,
-              isFeatured: true
-            },
-            {
-              id: "2", 
-              name: "Motor Driver L298N",
-              price: 150, // Robu ~₹100 + ₹50
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Dual H-Bridge Motor Driver for DC and Stepper Motors with 2A current capacity, ideal for robotics projects",
-              category: "Motor Drivers",
-              inStock: true,
-              rating: 4.6,
-              reviews: 892
-            },
-            {
-              id: "3",
-              name: "Breadboard 830 Point",
-              price: 120, // Robu ~₹70 + ₹50
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Solderless breadboard for prototyping circuits with power rails, essential for electronics prototyping",
-              category: "Prototyping",
-              inStock: true,
-              rating: 4.7,
-              reviews: 1563
-            },
-            {
-              id: "4",
-              name: "Raspberry Pi 4B 8GB",
-              price: 3050, // Robu ~₹3000 + ₹50
-              originalPrice: 10999,
-              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Single-board computer with ARM Cortex-A72 processor and 8GB RAM, perfect for IoT and computing projects",
-              category: "Single Board Computers",
-              inStock: false,
-              rating: 4.9,
-              reviews: 2341,
-              isNew: true
-            },
-            {
-              id: "5",
-              name: "Servo Motor SG90",
-              price: 100, // Robu ~₹50 + ₹50
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Micro servo motor for robotics projects with 180° rotation, perfect for automation and robotics",
-              category: "Motors",
-              inStock: true,
-              rating: 4.5,
-              reviews: 678
-            },
-            {
-              id: "6",
-              name: "ESP32 DevKit V1",
-              price: 200, // Robu ~₹150 + ₹50
-              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "WiFi and Bluetooth enabled microcontroller with dual-core processor, ideal for IoT applications",
-              category: "Microcontrollers", 
-              inStock: true,
-              rating: 4.7,
-              reviews: 945,
-              isFeatured: true
-            },
-            {
-              id: "7",
-              name: "LED Strip WS2812B",
-              price: 180, // Robu ~₹130 + ₹50
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Addressable RGB LED strip with 30 LEDs per meter, perfect for lighting projects and displays",
-              category: "LEDs",
-              inStock: true,
-              rating: 4.4,
-              reviews: 523
-            },
-            {
-              id: "8",
-              name: "Relay Module 5V",
-              price: 130, // Robu ~₹80 + ₹50
-              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "5V relay module for switching high voltage devices, essential for home automation projects",
-              category: "Relays",
-              inStock: true,
-              rating: 4.3,
-              reviews: 456
-            },
-            {
-              id: "9",
-              name: "Arduino Nano",
-              price: 250, // Robu ~₹200 + ₹50
-              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "Compact Arduino board based on ATmega328P, perfect for space-constrained projects",
-              category: "Microcontrollers",
-              inStock: true,
-              rating: 4.6,
-              reviews: 789
-            },
-            {
-              id: "10",
-              name: "Stepper Motor 28BYJ-48",
-              price: 170, // Robu ~₹120 + ₹50
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "28BYJ-48 stepper motor with ULN2003 driver, ideal for precise positioning applications",
-              category: "Motors",
-              inStock: true,
-              rating: 4.4,
-              reviews: 634
-            },
-            {
-              id: "11",
-              name: "Jumper Wires Set",
-              price: 110, // Robu ~₹60 + ₹50
-              image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "40-piece jumper wire set with male-to-male, male-to-female, and female-to-female connectors",
-              category: "Prototyping",
-              inStock: true,
-              rating: 4.8,
-              reviews: 1123
-            },
-            {
-              id: "12",
-              name: "NodeMCU ESP8266",
-              price: 180, // Robu ~₹130 + ₹50
-              image: "https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80",
-              description: "WiFi-enabled microcontroller based on ESP8266, perfect for IoT and home automation projects",
-              category: "Microcontrollers",
-              inStock: true,
-              rating: 4.7,
-              reviews: 856,
-              isNew: true
-            },
-            
-          ];
-          setProducts(mockProducts);
-          setLoading(false);
-        }, 1000);
-      } catch (err) {
-        setError('Failed to load products.');
-        console.error(err);
-        setLoading(false);
-      }
-    };
-
-    loadProducts();
+    setLoading(true);
+    const unsub = ProductService.subscribeProducts((items: any[]) => {
+      setProducts(items as Product[]);
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
   // Show error state if there's an error
