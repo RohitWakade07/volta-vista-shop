@@ -31,6 +31,9 @@ const Products = () => {
     description: '',
     category: 'Microcontrollers',
     inStock: true,
+    images: '',
+    whatsInBox: '',
+    warranty: '',
   });
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -86,13 +89,16 @@ const Products = () => {
         reviews: 0,
         isNew: true,
         isFeatured: false,
+        images: newProduct.images ? newProduct.images.split(',').map(url => url.trim()).filter(Boolean) : undefined,
+        whatsInBox: newProduct.whatsInBox ? newProduct.whatsInBox.split(',').map(item => item.trim()).filter(Boolean) : undefined,
+        warranty: newProduct.warranty.trim() || undefined,
       } as any;
       if (editId) {
         await ProductService.updateProduct(editId, payload);
       } else {
         await ProductService.addProduct(payload);
       }
-      setNewProduct({ name: '', price: '', originalPrice: '', image: '', description: '', category: 'Microcontrollers', inStock: true });
+      setNewProduct({ name: '', price: '', originalPrice: '', image: '', description: '', category: 'Microcontrollers', inStock: true, images: '', whatsInBox: '', warranty: '' });
       setEditId(null);
       toast({ title: 'Product added', description: 'Product has been created.' });
     } catch (e: any) {
@@ -130,7 +136,7 @@ const Products = () => {
               {editId ? 'Update Product' : (creating ? 'Creating...' : 'Add Product')}
             </Button>
             {editId && (
-              <Button variant="outline" onClick={() => { setEditId(null); setNewProduct({ name: '', price: '', originalPrice: '', image: '', description: '', category: 'Microcontrollers', inStock: true }); }}>Cancel</Button>
+              <Button variant="outline" onClick={() => { setEditId(null); setNewProduct({ name: '', price: '', originalPrice: '', image: '', description: '', category: 'Microcontrollers', inStock: true, images: '', whatsInBox: '', warranty: '' }); }}>Cancel</Button>
             )}
           </div>
         </div>
@@ -167,6 +173,18 @@ const Products = () => {
               <div className="md:col-span-2">
                 <Label htmlFor="np-desc">Description</Label>
                 <Input id="np-desc" value={newProduct.description} onChange={(e) => setNewProduct(p => ({ ...p, description: e.target.value }))} />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="np-images">Additional Images (comma-separated URLs)</Label>
+                <Input id="np-images" value={newProduct.images} onChange={(e) => setNewProduct(p => ({ ...p, images: e.target.value }))} placeholder="https://image1.jpg, https://image2.jpg" />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="np-whats-in-box">What's in the Box (comma-separated items)</Label>
+                <Input id="np-whats-in-box" value={newProduct.whatsInBox} onChange={(e) => setNewProduct(p => ({ ...p, whatsInBox: e.target.value }))} placeholder="Arduino Uno, USB Cable, Breadboard, Jumper Wires" />
+              </div>
+              <div className="md:col-span-2">
+                <Label htmlFor="np-warranty">Warranty</Label>
+                <Input id="np-warranty" value={newProduct.warranty} onChange={(e) => setNewProduct(p => ({ ...p, warranty: e.target.value }))} placeholder="1 year manufacturer warranty" />
               </div>
             </div>
 
@@ -240,7 +258,21 @@ const Products = () => {
                     >
                       {product.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => { setEditId(product.id); setNewProduct({ name: product.name, price: String(product.price), originalPrice: product.originalPrice ? String(product.originalPrice) : '', image: product.image, description: product.description, category: product.category, inStock: product.inStock }); }}>
+                    <Button variant="outline" size="sm" onClick={() => { 
+                      setEditId(product.id); 
+                      setNewProduct({ 
+                        name: product.name, 
+                        price: String(product.price), 
+                        originalPrice: product.originalPrice ? String(product.originalPrice) : '', 
+                        image: product.image, 
+                        description: product.description, 
+                        category: product.category, 
+                        inStock: product.inStock,
+                        images: product.images ? product.images.join(', ') : '',
+                        whatsInBox: product.whatsInBox ? product.whatsInBox.join(', ') : '',
+                        warranty: product.warranty || ''
+                      }); 
+                    }}>
                       <Edit className="h-4 w-4" />
                     </Button>
                     <Button 

@@ -61,6 +61,24 @@ export interface CartItem {
   inStock: boolean;
 }
 
+export interface Product {
+  id: string;
+  name: string;
+  price: number;
+  originalPrice?: number;
+  image: string;
+  description: string;
+  category: string;
+  inStock: boolean;
+  rating: number;
+  reviews: number;
+  isNew?: boolean;
+  isFeatured?: boolean;
+  images?: string[];
+  whatsInBox?: string[];
+  warranty?: string;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;

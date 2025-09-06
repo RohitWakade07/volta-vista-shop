@@ -16,15 +16,16 @@ import {
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import app from '@/lib/firebase';
+// Cloud Functions disabled for Spark plan compatibility
+// import { getFunctions, httpsCallable } from 'firebase/functions';
+// import app from '@/lib/firebase';
 import { PaymentService } from '@/services/paymentService';
 import { ProductService } from '@/services/productService';
 import { Order } from '@/types';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface DashboardStats {
-  totalUsers: number;
+  // totalUsers: number; // Disabled for Spark plan compatibility
   totalOrders: number;
   totalRevenue: number;
   totalProducts: number;
@@ -36,7 +37,7 @@ const Dashboard = () => {
   const { userProfile } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats>({
-    totalUsers: 0,
+    // totalUsers: 0, // Disabled for Spark plan compatibility
     totalOrders: 0,
     totalRevenue: 0,
     totalProducts: 0,
@@ -58,22 +59,22 @@ const Dashboard = () => {
     return () => { unsubProducts(); unsubOrders(); };
   }, []);
 
-  // fetch total users via callable function (only super admin gets a value)
-  useEffect(() => {
-    (async () => {
-      try {
-        const functions = getFunctions(app as any);
-        const callable: any = httpsCallable(functions, 'getUserCount');
-        const res: any = await callable({});
-        const count = res?.data?.count;
-        if (typeof count === 'number') {
-          setStats(prev => ({ ...prev, totalUsers: count }));
-        }
-      } catch (e) {
-        // ignore if not authorized
-      }
-    })();
-  }, []);
+  // Cloud Function disabled for Spark plan compatibility
+  // useEffect(() => {
+  //   (async () => {
+  //     try {
+  //       const functions = getFunctions(app as any);
+  //       const callable: any = httpsCallable(functions, 'getUserCount');
+  //       const res: any = await callable({});
+  //       const count = res?.data?.count;
+  //       if (typeof count === 'number') {
+  //         setStats(prev => ({ ...prev, totalUsers: count }));
+  //       }
+  //     } catch (e) {
+  //       // ignore if not authorized
+  //     }
+  //   })();
+  // }, []);
 
   // chart data
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -140,8 +141,9 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+          {/* Total Users card disabled for Spark plan compatibility */}
+          {/* <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -152,7 +154,7 @@ const Dashboard = () => {
                 +{stats.monthlyGrowth}% from last month
               </p>
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

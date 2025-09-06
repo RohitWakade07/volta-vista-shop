@@ -12,24 +12,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ProductService } from '@/services/productService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  description: string;
-  category: string;
-  inStock: boolean;
-  rating: number;
-  reviews: number;
-  isNew?: boolean;
-  isFeatured?: boolean;
-  images?: string[];
-  boxContents?: string[];
-  warranty?: string | null;
-}
+import { Product } from '@/types';
 
 interface CartItem extends Product {
   quantity: number;
@@ -48,13 +31,13 @@ const Index = () => {
   }, [currentUser, userProfile]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -181,6 +164,11 @@ const Index = () => {
       title: "Proceeding to checkout",
       description: `Redirecting to payment for ${product.name}`,
     });
+  };
+
+  const openProductDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setIsProductDialogOpen(true);
   };
 
   const getTotalPrice = () => {
@@ -394,7 +382,7 @@ const Index = () => {
                   Includes ebook for building projects, 24/7 customer & project support, and Free Soldering Anytime.
                 </CardDescription>
                 <div className="mt-3 flex items-center gap-3">
-                  <span className="text-2xl font-bold text-primary">₹1249</span>
+                  <span className="text-2xl font-bold text-primary">₹1079</span>
                   <span className="text-sm text-muted-foreground line-through">₹1499</span>
                   <Badge variant="secondary">Use code: FRESHERS2025</Badge>
                 </div>
@@ -496,7 +484,7 @@ const Index = () => {
                   : 'grid-cols-1'
               }`}>
                 {filteredProducts.map((product) => (
-                  <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border-border/50 hover:border-primary/50 overflow-hidden">
+                  <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border-border/50 hover:border-primary/50 overflow-hidden cursor-pointer" onClick={() => openProductDialog(product)}>
                     <div className="relative">
                       <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-t-lg flex items-center justify-center">
                         <div className="text-muted-foreground text-sm">Product Image</div>
@@ -565,7 +553,10 @@ const Index = () => {
                       
                       <div className="flex gap-2">
                         <Button
-                          onClick={() => addToCart(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            addToCart(product);
+                          }}
                           disabled={!product.inStock}
                           variant="outline"
                           className="flex-1"
@@ -575,7 +566,10 @@ const Index = () => {
                         </Button>
                         
                         <Button
-                          onClick={() => buyNow(product)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            buyNow(product);
+                          }}
                           disabled={!product.inStock}
                           className="flex-1"
                         >
@@ -762,6 +756,141 @@ const Index = () => {
           </div>
         </div>
       </footer>
+
+      {/* Product Detail Dialog */}
+      <Dialog open={isProductDialogOpen} onOpenChange={setIsProductDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{selectedProduct?.name}</DialogTitle>
+            <DialogDescription>
+              {selectedProduct?.category} • {selectedProduct?.inStock ? 'In Stock' : 'Out of Stock'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedProduct && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Product Images */}
+              <div className="space-y-4">
+                <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center">
+                  <div className="text-muted-foreground text-lg">Product Image</div>
+                </div>
+                
+                {/* Additional Images */}
+                {selectedProduct.images && selectedProduct.images.length > 0 && (
+                  <div className="grid grid-cols-4 gap-2">
+                    {selectedProduct.images.map((image, index) => (
+                      <div key={index} className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-md flex items-center justify-center">
+                        <div className="text-muted-foreground text-xs">Image {index + 1}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Product Details */}
+              <div className="space-y-6">
+                {/* Price */}
+                <div className="flex items-center space-x-3">
+                  <span className="text-3xl font-bold text-primary">₹{selectedProduct.price}</span>
+                  {selectedProduct.originalPrice && (
+                    <span className="text-lg text-muted-foreground line-through">
+                      ₹{selectedProduct.originalPrice}
+                    </span>
+                  )}
+                  {selectedProduct.originalPrice && (
+                    <Badge className="bg-red-500 text-white">
+                      Save ₹{selectedProduct.originalPrice - selectedProduct.price}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Rating */}
+                <div className="flex items-center space-x-2">
+                  {renderStars(selectedProduct.rating)}
+                  <span className="text-sm text-muted-foreground">
+                    ({selectedProduct.reviews} reviews)
+                  </span>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <h3 className="font-semibold mb-2">Description</h3>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {selectedProduct.description}
+                  </p>
+                </div>
+
+                {/* What's in the Box */}
+                {selectedProduct.whatsInBox && selectedProduct.whatsInBox.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">What's in the Box</h3>
+                    <ul className="space-y-1">
+                      {selectedProduct.whatsInBox.map((item, index) => (
+                        <li key={index} className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <div className="w-1.5 h-1.5 bg-primary rounded-full" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Warranty */}
+                {selectedProduct.warranty && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Warranty</h3>
+                    <p className="text-sm text-muted-foreground">{selectedProduct.warranty}</p>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4">
+                  <Button
+                    onClick={() => {
+                      addToCart(selectedProduct);
+                      setIsProductDialogOpen(false);
+                    }}
+                    disabled={!selectedProduct.inStock}
+                    variant="outline"
+                    className="flex-1"
+                    size="lg"
+                  >
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Add to Cart
+                  </Button>
+                  
+                  <Button
+                    onClick={() => {
+                      buyNow(selectedProduct);
+                      setIsProductDialogOpen(false);
+                    }}
+                    disabled={!selectedProduct.inStock}
+                    className="flex-1"
+                    size="lg"
+                  >
+                    Buy Now
+                  </Button>
+                </div>
+
+                {/* Stock Status */}
+                <div className="flex items-center space-x-2 text-sm">
+                  {selectedProduct.inStock ? (
+                    <>
+                      <div className="w-2 h-2 bg-green-500 rounded-full" />
+                      <span className="text-green-600 font-medium">In Stock</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="w-2 h-2 bg-red-500 rounded-full" />
+                      <span className="text-red-600 font-medium">Out of Stock</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

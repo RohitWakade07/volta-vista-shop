@@ -25,7 +25,7 @@ const db = admin.firestore();
 const products = [
   {
     name: 'Arduino Kit Offer (Freshers)',
-    price: 1249,
+    price: 1079,
     originalPrice: 1499,
     image: 'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=400&h=300&fit=crop&crop=center&q=80',
     description: "Special starter kit for freshers. Apply promo code FRESHERS2025 to get ₹1249 price. Includes ebook for building projects, 24/7 customer & project support, and Free Soldering Anytime.",
@@ -35,15 +35,15 @@ const products = [
     reviews: 312,
     isNew: true,
     isFeatured: true,
-    images: [],
-    boxContents: ['Arduino Uno', 'Breadboard', 'Jumper Wires', 'LEDs', 'Resistors'],
+    images: ['https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=400&h=300&fit=crop&crop=center&q=80', 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80'],
+    whatsInBox: ['Arduino Uno R3', 'Breadboard 830 Point', 'Jumper Wires (40pcs)', 'LEDs (10pcs)', 'Resistors (10pcs)', 'USB Cable', 'Project Ebook'],
     warranty: '6 months',
     fixedId: '13'
   },
-  { name: 'Arduino Uno R3', price: 350, originalPrice: 1099, image: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80', description: 'Microcontroller board based on the ATmega328P', category: 'Microcontrollers', inStock: true, rating: 4.8, reviews: 1247, isFeatured: true, fixedId: '1' },
+  { name: 'Arduino Uno R3', price: 350, originalPrice: 1099, image: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80', description: 'Microcontroller board based on the ATmega328P. Perfect for beginners and advanced users alike.', category: 'Microcontrollers', inStock: true, rating: 4.8, reviews: 1247, isFeatured: true, images: ['https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80'], whatsInBox: ['Arduino Uno R3 Board', 'USB Cable', 'Getting Started Guide'], warranty: '1 year manufacturer warranty', fixedId: '1' },
   { name: 'Motor Driver L298N', price: 150, image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80', description: 'Dual H-Bridge Motor Driver', category: 'Motor Drivers', inStock: true, rating: 4.6, reviews: 892, fixedId: '2' },
   { name: 'Breadboard 830 Point', price: 120, image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80', description: 'Solderless breadboard with power rails', category: 'Prototyping', inStock: true, rating: 4.7, reviews: 1563, fixedId: '3' },
-  { name: 'Raspberry Pi 4B 8GB', price: 3050, originalPrice: 10999, image: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80', description: 'ARM Cortex-A72 SBC with 8GB RAM', category: 'Single Board Computers', inStock: false, rating: 4.9, reviews: 2341, isNew: true, fixedId: '4' },
+  { name: 'Raspberry Pi 4B 8GB', price: 3050, originalPrice: 10999, image: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80', description: 'ARM Cortex-A72 SBC with 8GB RAM. High-performance single board computer for advanced projects.', category: 'Single Board Computers', inStock: false, rating: 4.9, reviews: 2341, isNew: true, images: ['https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80'], whatsInBox: ['Raspberry Pi 4B 8GB', 'MicroSD Card 32GB', 'Power Supply 5V 3A', 'Heat Sinks', 'Getting Started Guide'], warranty: '1 year manufacturer warranty', fixedId: '4' },
   { name: 'Servo Motor SG90', price: 100, image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80', description: 'Micro servo motor 180°', category: 'Motors', inStock: true, rating: 4.5, reviews: 678, fixedId: '5' },
   { name: 'ESP32 DevKit V1', price: 200, image: 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80', description: 'WiFi+BT microcontroller dual-core', category: 'Microcontrollers', inStock: true, rating: 4.7, reviews: 945, isFeatured: true, fixedId: '6' },
   { name: 'LED Strip WS2812B', price: 180, image: 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=400&h=300&fit=crop&crop=center&q=80', description: 'Addressable RGB LED strip', category: 'LEDs', inStock: true, rating: 4.4, reviews: 523, fixedId: '7' },
