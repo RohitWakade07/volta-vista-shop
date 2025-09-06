@@ -45,13 +45,7 @@ const Index = () => {
 
   const categories = [
     { id: 'all', name: 'All Categories' },
-    { id: 'Microcontrollers', name: 'Microcontrollers' },
-    { id: 'Motor Drivers', name: 'Motor Drivers' },
-    { id: 'Prototyping', name: 'Prototyping' },
-    { id: 'Single Board Computers', name: 'Single Board Computers' },
-    { id: 'Motors', name: 'Motors' },
-    { id: 'LEDs', name: 'LEDs' },
-    { id: 'Relays', name: 'Relays' }
+    
   ];
 
   // Load products from Firebase (mock data for now)
@@ -726,7 +720,7 @@ const Index = () => {
       {/* Footer with Contact Information */}
       <footer className="bg-muted/50 border-t border-border mt-16">
         <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
             <div>
               <h3 className="text-lg font-semibold mb-4">Ultron</h3>
               <p className="text-sm text-muted-foreground">
@@ -768,10 +762,19 @@ const Index = () => {
             <div>
               <h4 className="font-semibold mb-4">Quick Links</h4>
               <div className="space-y-2 text-sm">
-                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">About Us</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Products</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Support</a></div>
-                <div><a href="#" className="text-muted-foreground hover:text-primary transition-colors">Privacy Policy</a></div>
+                <div><a href="/contact-us" className="text-muted-foreground hover:text-primary transition-colors">Contact Us</a></div>
+                <div><a href="/admin/products" className="text-muted-foreground hover:text-primary transition-colors">Products</a></div>
+                <div><a href="/contact-us" className="text-muted-foreground hover:text-primary transition-colors">Support</a></div>
+                <div><a href="/privacy-policy" className="text-muted-foreground hover:text-primary transition-colors">Privacy Policy</a></div>
+              </div>
+            </div>
+            
+            <div>
+              <h4 className="font-semibold mb-4">Legal</h4>
+              <div className="space-y-2 text-sm">
+                <div><a href="/terms-of-service" className="text-muted-foreground hover:text-primary transition-colors">Terms of Service</a></div>
+                <div><a href="/refund-policy" className="text-muted-foreground hover:text-primary transition-colors">Refund Policy</a></div>
+                <div><a href="/shipping-policy" className="text-muted-foreground hover:text-primary transition-colors">Shipping Policy</a></div>
               </div>
             </div>
             
@@ -789,7 +792,7 @@ const Index = () => {
           
           <div className="border-t border-border mt-8 pt-8 text-center">
             <p className="text-sm text-muted-foreground">
-              © 2024 Ultron. All rights reserved.
+              © 2025 Ultron. All rights reserved.
             </p>
           </div>
         </div>

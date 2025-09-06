@@ -19,6 +19,11 @@ import Checkout from '@/pages/Checkout';
 import PaymentTest from '@/pages/PaymentTest';
 import OrderDetails from '@/pages/OrderDetails';
 import Cart from '@/pages/Cart';
+import PrivacyPolicy from '@/pages/PrivacyPolicy';
+import TermsOfService from '@/pages/TermsOfService';
+import RefundPolicy from '@/pages/RefundPolicy';
+import ShippingPolicy from '@/pages/ShippingPolicy';
+import ContactUs from '@/pages/ContactUs';
 
 const queryClient = new QueryClient();
 
@@ -80,6 +85,11 @@ function App() {
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/payment/test" element={<PaymentTest />} />
                 <Route path="/orders/:id" element={<OrderDetails />} />
+                <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+                <Route path="/terms-of-service" element={<TermsOfService />} />
+                <Route path="/refund-policy" element={<RefundPolicy />} />
+                <Route path="/shipping-policy" element={<ShippingPolicy />} />
+                <Route path="/contact-us" element={<ContactUs />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />
