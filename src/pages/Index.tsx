@@ -498,8 +498,21 @@ const Index = () => {
                 {filteredProducts.map((product) => (
                   <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border-border/50 hover:border-primary/50 overflow-hidden cursor-pointer" onClick={() => openProductDialog(product)}>
                     <div className="relative">
-                      <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-t-lg flex items-center justify-center">
-                        <div className="text-muted-foreground text-sm">Product Image</div>
+                      <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-t-lg flex items-center justify-center overflow-hidden">
+                        {product.image ? (
+                          <img 
+                            src={product.image} 
+                            alt={product.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+                        <div className={`text-muted-foreground text-sm ${product.image ? 'hidden' : ''}`}>
+                          Product Image
+                        </div>
                       </div>
                       
                       {/* Badges */}
@@ -621,8 +634,21 @@ const Index = () => {
                   <div className="space-y-4 mb-4 max-h-96 overflow-y-auto scrollbar-hide">
                     {cart.map((item) => (
                       <div key={item.id} className="flex items-center space-x-3 border-b border-border pb-3">
-                        <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center">
-                          <div className="text-xs text-muted-foreground">IMG</div>
+                        <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
+                          {item.image ? (
+                            <img 
+                              src={item.image} 
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }}
+                            />
+                          ) : null}
+                          <div className={`text-xs text-muted-foreground ${item.image ? 'hidden' : ''}`}>
+                            IMG
+                          </div>
                         </div>
                         
                         <div className="flex-1 min-w-0">
@@ -783,16 +809,40 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Product Images */}
               <div className="space-y-4">
-                <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center">
-                  <div className="text-muted-foreground text-lg">Product Image</div>
+                <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center overflow-hidden">
+                  {selectedProduct.image ? (
+                    <img 
+                      src={selectedProduct.image} 
+                      alt={selectedProduct.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  <div className={`text-muted-foreground text-lg ${selectedProduct.image ? 'hidden' : ''}`}>
+                    Product Image
+                  </div>
                 </div>
                 
                 {/* Additional Images */}
                 {selectedProduct.images && selectedProduct.images.length > 0 && (
                   <div className="grid grid-cols-4 gap-2">
                     {selectedProduct.images.map((image, index) => (
-                      <div key={index} className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-md flex items-center justify-center">
-                        <div className="text-muted-foreground text-xs">Image {index + 1}</div>
+                      <div key={index} className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-md flex items-center justify-center overflow-hidden">
+                        <img 
+                          src={image} 
+                          alt={`${selectedProduct.name} ${index + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                        <div className={`text-muted-foreground text-xs ${image ? 'hidden' : ''}`}>
+                          Image {index + 1}
+                        </div>
                       </div>
                     ))}
                   </div>

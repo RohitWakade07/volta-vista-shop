@@ -80,8 +80,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
               const data = userDoc.data() as UserProfile;
-              // Elevate role if Google email is super admin
-              const role = (user.email === 'ultron.inov@gmail.com') ? 'superadmin' : (data.role || 'user');
+              // Elevate role if Google email is admin
+              const role = (user.email === 'ultron.inov@gmail.com') ? 'admin' : (data.role || 'user');
               setUserProfile({ ...data, role });
             } else {
               // Create a basic profile if no Firestore document exists
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 uid: user.uid,
                 email: user.email || '',
                 displayName: user.displayName || '',
-                role: (user.email === 'ultron.inov@gmail.com') ? 'superadmin' : 'user',
+                role: (user.email === 'ultron.inov@gmail.com') ? 'admin' : 'user',
                 referralCode: '',
                 referralCount: 0,
                 totalEarnings: 0,

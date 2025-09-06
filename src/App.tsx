@@ -13,6 +13,7 @@ import Register from '@/pages/auth/Register';
 import Dashboard from '@/pages/admin/Dashboard';
 import Products from '@/pages/admin/Products';
 import OrdersAdmin from '@/pages/admin/Orders';
+import ImageUpload from '@/pages/admin/ImageUpload';
 import Profile from '@/pages/Profile';
 import Checkout from '@/pages/Checkout';
 import PaymentTest from '@/pages/PaymentTest';
@@ -59,6 +60,11 @@ function App() {
                 <Route path="/admin/orders" element={
                   <ProtectedRoute>
                     <OrdersAdmin />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/images" element={
+                  <ProtectedRoute>
+                    <ImageUpload />
                   </ProtectedRoute>
                 } />
                 <Route path="/profile" element={

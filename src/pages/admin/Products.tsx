@@ -10,7 +10,12 @@ import {
   Trash2, 
   Package,
   Search,
-  Filter
+  Filter,
+  Image,
+  Check,
+  Settings,
+  X,
+  Save
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,13 +41,10 @@ const Products = () => {
     warranty: '',
   });
   const [editId, setEditId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const unsub = ProductService.subscribeProducts(setProducts);
-    return () => unsub();
-  }, []);
-
-  const categories = [
+  const [showImageSelector, setShowImageSelector] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+  const [categories, setCategories] = useState([
     { id: 'all', name: 'All Categories' },
     { id: 'Microcontrollers', name: 'Microcontrollers' },
     { id: 'Motor Drivers', name: 'Motor Drivers' },
@@ -51,7 +53,25 @@ const Products = () => {
     { id: 'Motors', name: 'Motors' },
     { id: 'LEDs', name: 'LEDs' },
     { id: 'Relays', name: 'Relays' }
+  ]);
+  
+  // Available images from public folder
+  const availableImages = [
+    { name: 'Final.webp', url: '/Final.webp' },
+    { name: 'ultron (1).png', url: '/ultron (1).png' },
+    { name: 'ultron (2).png', url: '/ultron (2).png' },
+    { name: 'ultron (4).png', url: '/ultron (4).png' },
+    { name: 'ultron (5).png', url: '/ultron (5).png' },
+    { name: 'banner.png', url: '/banner.png' },
+    { name: 'placeholder.svg', url: '/placeholder.svg' },
+    { name: 'favicon.ico', url: '/favicon.ico' }
   ];
+
+  useEffect(() => {
+    const unsub = ProductService.subscribeProducts(setProducts);
+    return () => unsub();
+  }, []);
+
 
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -108,6 +128,74 @@ const Products = () => {
     }
   };
 
+  const handleImageSelect = (imageUrl: string) => {
+    setNewProduct(prev => ({ ...prev, image: imageUrl }));
+    setShowImageSelector(false);
+    toast({
+      title: "Image Selected",
+      description: "Image has been set for the product",
+    });
+  };
+
+  const addCategory = () => {
+    if (!newCategory.trim()) {
+      toast({
+        title: "Invalid Category",
+        description: "Please enter a category name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const categoryId = newCategory.trim().replace(/\s+/g, ' ').toLowerCase().replace(/\s+/g, '-');
+    const categoryName = newCategory.trim().replace(/\s+/g, ' ');
+
+    // Check if category already exists
+    if (categories.find(cat => cat.id === categoryId || cat.name === categoryName)) {
+      toast({
+        title: "Category Exists",
+        description: "A category with this name already exists",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCategories(prev => [...prev, { id: categoryId, name: categoryName }]);
+    setNewCategory('');
+    toast({
+      title: "Category Added",
+      description: `${categoryName} has been added to categories`,
+    });
+  };
+
+  const removeCategory = (categoryId: string) => {
+    if (categoryId === 'all') {
+      toast({
+        title: "Cannot Remove",
+        description: "Cannot remove 'All Categories' option",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check if any products use this category
+    const productsUsingCategory = products.filter(product => product.category === categories.find(cat => cat.id === categoryId)?.name);
+    if (productsUsingCategory.length > 0) {
+      toast({
+        title: "Cannot Remove",
+        description: `Cannot remove category. ${productsUsingCategory.length} product(s) are using this category`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setCategories(prev => prev.filter(cat => cat.id !== categoryId));
+    toast({
+      title: "Category Removed",
+      description: "Category has been removed successfully",
+    });
+  };
+
   if (userProfile?.role !== 'admin' && userProfile?.role !== 'superadmin') {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -131,6 +219,14 @@ const Products = () => {
             <p className="text-muted-foreground">Manage your store's products</p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowCategoryManager(!showCategoryManager)}
+              className="flex items-center gap-2"
+            >
+              <Settings className="h-4 w-4" />
+              Manage Categories
+            </Button>
             <Button onClick={handleCreate} disabled={creating}>
               <Plus className="h-4 w-4 mr-2" />
               {editId ? 'Update Product' : (creating ? 'Creating...' : 'Add Product')}
@@ -168,7 +264,110 @@ const Products = () => {
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="np-image">Image URL</Label>
-                <Input id="np-image" value={newProduct.image} onChange={(e) => setNewProduct(p => ({ ...p, image: e.target.value }))} placeholder="https://..." />
+                <div className="flex gap-2">
+                  <Input 
+                    id="np-image" 
+                    value={newProduct.image} 
+                    onChange={(e) => setNewProduct(p => ({ ...p, image: e.target.value }))} 
+                    placeholder="https://... or select from public folder" 
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setShowImageSelector(!showImageSelector)}
+                    className="flex items-center gap-2"
+                  >
+                    <Image className="h-4 w-4" />
+                    Select
+                  </Button>
+                </div>
+                
+                {/* Image Preview */}
+                {newProduct.image && (
+                  <div className="mt-2">
+                    <img 
+                      src={newProduct.image} 
+                      alt="Product preview" 
+                      className="w-20 h-20 object-cover rounded border"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  </div>
+                )}
+                
+                {/* Image Selector Modal */}
+                {showImageSelector && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <Card className="w-full max-w-4xl max-h-[80vh] overflow-y-auto">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Image className="h-5 w-5" />
+                          Select Image from Public Folder
+                        </CardTitle>
+                        <CardDescription>
+                          Choose an image from your public folder
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {availableImages.map((image) => (
+                            <div
+                              key={image.name}
+                              className={`relative group cursor-pointer border rounded-lg overflow-hidden transition-all hover:shadow-lg ${
+                                newProduct.image === image.url ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'
+                              }`}
+                              onClick={() => handleImageSelect(image.url)}
+                            >
+                              <div className="aspect-square bg-muted flex items-center justify-center">
+                                <img
+                                  src={image.url}
+                                  alt={image.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                  }}
+                                />
+                                <div className="hidden text-muted-foreground text-xs text-center p-2">
+                                  {image.name}
+                                </div>
+                              </div>
+                              
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="flex items-center gap-2"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Select
+                                </Button>
+                              </div>
+                              
+                              <div className="p-2 bg-background">
+                                <p className="text-sm font-medium truncate">{image.name}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {image.url}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        <div className="flex justify-end gap-2 mt-4">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => setShowImageSelector(false)}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="np-desc">Description</Label>
@@ -308,6 +507,101 @@ const Products = () => {
               </p>
             </CardContent>
           </Card>
+        )}
+
+        {/* Category Management Modal */}
+        {showCategoryManager && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <Card className="w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Manage Categories
+                </CardTitle>
+                <CardDescription>
+                  Add or remove product categories
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Add New Category */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Add New Category</h3>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value)}
+                      placeholder="Enter category name (e.g., Sensors, Power Supplies)"
+                      onKeyPress={(e) => e.key === 'Enter' && addCategory()}
+                    />
+                    <Button onClick={addCategory} className="flex items-center gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Current Categories */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Current Categories</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {categories.map((category) => (
+                      <div
+                        key={category.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{category.name}</span>
+                          {category.id === 'all' && (
+                            <Badge variant="secondary" className="text-xs">
+                              System
+                            </Badge>
+                          )}
+                        </div>
+                        {category.id !== 'all' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeCategory(category.id)}
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Usage Statistics */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Category Usage</h3>
+                  <div className="space-y-2">
+                    {categories.filter(cat => cat.id !== 'all').map((category) => {
+                      const productCount = products.filter(product => product.category === category.name).length;
+                      return (
+                        <div key={category.id} className="flex items-center justify-between p-2 bg-muted rounded">
+                          <span className="text-sm">{category.name}</span>
+                          <Badge variant={productCount > 0 ? "default" : "secondary"}>
+                            {productCount} product{productCount !== 1 ? 's' : ''}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowCategoryManager(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </div>
     </div>

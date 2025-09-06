@@ -27,7 +27,7 @@ const products = [
     name: 'Arduino Kit Offer (Freshers)',
     price: 1079,
     originalPrice: 1499,
-    image: 'https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=400&h=300&fit=crop&crop=center&q=80',
+    image: '/Final.webp',
     description: "Special starter kit for freshers. Apply promo code FRESHERS2025 to get ₹1249 price. Includes ebook for building projects, 24/7 customer & project support, and Free Soldering Anytime.",
     category: 'Kits',
     inStock: true,
@@ -35,7 +35,7 @@ const products = [
     reviews: 312,
     isNew: true,
     isFeatured: true,
-    images: ['https://images.unsplash.com/photo-1518779578993-ec3579fee39f?w=400&h=300&fit=crop&crop=center&q=80', 'https://images.unsplash.com/photo-1588702547919-26089e690ecc?w=400&h=300&fit=crop&crop=center&q=80'],
+    images: ['/Final.webp', '/banner.png'],
     whatsInBox: ['Arduino Uno R3', 'Breadboard 830 Point', 'Jumper Wires (40pcs)', 'LEDs (10pcs)', 'Resistors (10pcs)', 'USB Cable', 'Project Ebook'],
     warranty: '6 months',
     fixedId: '13'

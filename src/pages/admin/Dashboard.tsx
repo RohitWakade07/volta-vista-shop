@@ -12,7 +12,9 @@ import {
   RefreshCw,
   TrendingUp,
   Eye,
-  Download
+  Download,
+  Image,
+  Settings
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +25,7 @@ import { PaymentService } from '@/services/paymentService';
 import { ProductService } from '@/services/productService';
 import { Order } from '@/types';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { Link } from 'react-router-dom';
 
 interface DashboardStats {
   // totalUsers: number; // Disabled for Spark plan compatibility
@@ -195,6 +198,43 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Quick Access Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Quick Access
+            </CardTitle>
+            <CardDescription>Manage your store settings and content</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Link to="/admin/products">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
+                  <Package className="h-6 w-6" />
+                  <span>Manage Products</span>
+                </Button>
+              </Link>
+              <Link to="/admin/orders">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
+                  <ShoppingCart className="h-6 w-6" />
+                  <span>View Orders</span>
+                </Button>
+              </Link>
+              <Link to="/admin/images">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
+                  <Image className="h-6 w-6" />
+                  <span>Upload Images</span>
+                </Button>
+              </Link>
+              <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2" disabled>
+                <Users className="h-6 w-6" />
+                <span>User Management</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Analytics Tabs */}
         <Tabs defaultValue="overview" className="space-y-6">
