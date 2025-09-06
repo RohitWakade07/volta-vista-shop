@@ -211,6 +211,11 @@ const Index = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
+              <img 
+                src={theme === 'dark' ? "/ultron (5).png" : "/ultron (4).png"} 
+                alt="Ultron Logo" 
+                className="ultron-logo-mobile md:ultron-logo-desktop"
+              />
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text">
                   Ultron
@@ -343,6 +348,13 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-12 px-4">
         <div className="container mx-auto text-center">
+          <div className="flex justify-center mb-6">
+            <img 
+              src={theme === 'dark' ? "/ultron (5).png" : "/ultron (4).png"} 
+              alt="Ultron Logo" 
+              className="ultron-hero-mobile md:ultron-hero-desktop"
+            />
+          </div>
           <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text">
             Build Your Next Project
           </h2>
@@ -370,7 +382,7 @@ const Index = () => {
       {/* Featured Offer Banner */}
       <section className="px-4">
         <div className="container mx-auto">
-          <Card className="border-primary/30 bg-primary/5">
+          <Card className="border-primary/30 bg-card">
             <CardContent className="py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-2">
