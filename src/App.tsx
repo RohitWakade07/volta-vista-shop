@@ -17,6 +17,7 @@ import ImageUpload from '@/pages/admin/ImageUpload';
 import Profile from '@/pages/Profile';
 import Checkout from '@/pages/Checkout';
 import PaymentTest from '@/pages/PaymentTest';
+import PaymentSuccess from '@/pages/PaymentSuccess';
 import OrderDetails from '@/pages/OrderDetails';
 import Cart from '@/pages/Cart';
 import PrivacyPolicy from '@/pages/PrivacyPolicy';
@@ -84,6 +85,7 @@ function App() {
                 } />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/payment/test" element={<PaymentTest />} />
+                <Route path="/payment/success" element={<PaymentSuccess />} />
                 <Route path="/orders/:id" element={<OrderDetails />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                 <Route path="/terms-of-service" element={<TermsOfService />} />

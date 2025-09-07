@@ -108,49 +108,54 @@ const PaymentTest = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-background to-purple-50/30">
       <div className="container mx-auto p-6">
         <div className="max-w-md mx-auto">
           {/* Header */}
           <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">PhonePe Payment</h1>
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
+                <Phone className="h-6 w-6 text-white" />
+              </div>
+              <h1 className="text-3xl font-bold text-purple-800">PhonePe</h1>
+            </div>
             <p className="text-muted-foreground">Complete your payment securely</p>
           </div>
 
           {/* Payment Card */}
-          <Card className="mb-6">
-            <CardHeader>
+          <Card className="mb-6 border-purple-200 bg-white shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-t-lg">
               <div className="flex items-center justify-center space-x-2 mb-4">
-                <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
+                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                   <Phone className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle>PhonePe Payment</CardTitle>
-                  <CardDescription>Order #{orderId}</CardDescription>
+                  <CardTitle className="text-white">PhonePe Payment</CardTitle>
+                  <CardDescription className="text-purple-100">Order #{orderId}</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Payment Details */}
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span>Order ID:</span>
-                  <span className="font-mono text-sm">{orderId}</span>
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Order ID:</span>
+                  <span className="font-mono text-sm font-medium">{orderId}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Amount:</span>
-                  <span className="font-bold">₹{Number(amount).toFixed(0)}</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Amount:</span>
+                  <span className="font-bold text-lg text-purple-600">₹{Number(amount).toFixed(0)}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Payment Method:</span>
-                  <Badge variant="secondary">PhonePe</Badge>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Payment Method:</span>
+                  <Badge className="bg-purple-100 text-purple-800 border-purple-200">PhonePe</Badge>
                 </div>
               </div>
 
               {/* Security Notice */}
-              <Alert>
-                <Shield className="h-4 w-4" />
-                <AlertDescription>
+              <Alert className="border-green-200 bg-green-50">
+                <Shield className="h-4 w-4 text-green-600" />
+                <AlertDescription className="text-green-800">
                   This is a secure payment gateway. Your payment information is encrypted and secure.
                 </AlertDescription>
               </Alert>
@@ -166,7 +171,7 @@ const PaymentTest = () => {
                     <Button 
                       onClick={handlePaymentSuccess}
                       disabled={loading}
-                      className="w-full"
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
                       size="lg"
                     >
                       {loading ? (
@@ -176,8 +181,8 @@ const PaymentTest = () => {
                         </>
                       ) : (
                         <>
-                          <CreditCard className="h-4 w-4 mr-2" />
-                          Pay ₹{Number(amount).toFixed(0)}
+                          <Phone className="h-4 w-4 mr-2" />
+                          Pay ₹{Number(amount).toFixed(0)} with PhonePe
                         </>
                       )}
                     </Button>
@@ -185,7 +190,7 @@ const PaymentTest = () => {
                       variant="outline"
                       onClick={handlePaymentFailure}
                       disabled={loading}
-                      className="w-full"
+                      className="w-full border-gray-300 text-gray-600 hover:bg-gray-50"
                     >
                       Cancel Payment
                     </Button>
@@ -195,12 +200,12 @@ const PaymentTest = () => {
 
               {paymentStatus === 'processing' && (
                 <div className="text-center space-y-4">
-                  <div className="flex items-center justify-center space-x-2 text-blue-600">
+                  <div className="flex items-center justify-center space-x-2 text-purple-600">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Processing payment...</span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    Please wait while we process your payment securely.
+                    Please wait while we process your payment securely through PhonePe.
                   </p>
                 </div>
               )}
@@ -215,8 +220,11 @@ const PaymentTest = () => {
                     Your order has been placed successfully. You will receive a confirmation email shortly.
                   </p>
                   <div className="pt-4">
-                    <Button onClick={() => navigate('/')} className="w-full">
-                      Continue Shopping
+                    <Button 
+                      onClick={() => navigate(`/payment/success?orderId=${orderId}`)} 
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      View Order Details
                     </Button>
                   </div>
                 </div>
@@ -234,10 +242,17 @@ const PaymentTest = () => {
                     </Alert>
                   )}
                   <div className="space-y-3">
-                    <Button onClick={handleBackToCheckout} className="w-full">
+                    <Button 
+                      onClick={handleBackToCheckout} 
+                      className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                    >
                       Try Again
                     </Button>
-                    <Button variant="outline" onClick={() => navigate('/')} className="w-full">
+                    <Button 
+                      variant="outline" 
+                      onClick={() => navigate('/')} 
+                      className="w-full border-gray-300 text-gray-600 hover:bg-gray-50"
+                    >
                       Back to Home
                     </Button>
                   </div>
@@ -247,14 +262,14 @@ const PaymentTest = () => {
           </Card>
 
           {/* Test Mode Notice */}
-          <Card className="bg-yellow-50 border-yellow-200">
+          <Card className="bg-purple-50 border-purple-200">
             <CardContent className="pt-6">
-              <div className="flex items-center space-x-2 text-yellow-800">
-                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                <span className="text-sm font-medium">Test Mode</span>
+              <div className="flex items-center space-x-2 text-purple-800">
+                <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                <span className="text-sm font-medium">PhonePe Test Mode</span>
               </div>
-              <p className="text-sm text-yellow-700 mt-2">
-                This is a test payment interface. No real money will be charged.
+              <p className="text-sm text-purple-700 mt-2">
+                This is a test payment interface using PhonePe sandbox. No real money will be charged.
               </p>
             </CardContent>
           </Card>

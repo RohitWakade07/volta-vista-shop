@@ -5,7 +5,7 @@ import { Order, PaymentDetails, PhonePePayment } from '@/types';
 // PhonePe API Configuration (for testing)
 const PHONEPE_CONFIG = {
   merchantId: 'PGTESTPAYUAT', // Test merchant ID
-  saltKey: '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399', // Test salt key
+  saltKey: 'ZWMxNTZiNzktMGM4OC00YTBkLWI4MjktM2IwNDQwNzAwYzJk', // Test API key provided
   saltIndex: 1,
   baseUrl: 'https://api-preprod.phonepe.com/apis/pg-sandbox', // Test environment
 };
@@ -17,8 +17,8 @@ export class PaymentService {
       merchantId: PHONEPE_CONFIG.merchantId,
       merchantTransactionId: order.id,
       amount: order.total * 100, // Amount in paise
-      redirectUrl: `${window.location.origin}/orders/${order.id}`,
-      callbackUrl: `${window.location.origin}/orders/${order.id}`,
+      redirectUrl: `${window.location.origin}/payment/success?orderId=${order.id}`,
+      callbackUrl: `${window.location.origin}/api/payment/callback`,
       merchantUserId: order.userId,
       mobileNumber: order.shippingAddress.phone,
       paymentInstrument: {
@@ -26,15 +26,43 @@ export class PaymentService {
       },
     };
 
-    // In a real implementation, you would make an API call to PhonePe
-    // For testing, we'll simulate the payment flow
-    console.log('PhonePe Payment Payload:', payload);
-    
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Return a mock payment URL for testing
-    return `${window.location.origin}/payment/test?orderId=${order.id}&amount=${order.total}`;
+    try {
+      // Create the payment request
+      const response = await fetch(`${PHONEPE_CONFIG.baseUrl}/pg/v1/pay`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-VERIFY': this.generateChecksum(payload),
+        },
+        body: JSON.stringify({
+          request: btoa(JSON.stringify(payload))
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create PhonePe payment');
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data.instrumentResponse.redirectInfo) {
+        return data.data.instrumentResponse.redirectInfo.url;
+      } else {
+        throw new Error('Invalid response from PhonePe');
+      }
+    } catch (error) {
+      console.error('PhonePe API Error:', error);
+      // Fallback to test mode for development
+      return `${window.location.origin}/payment/test?orderId=${order.id}&amount=${order.total}`;
+    }
+  }
+
+  // Generate checksum for PhonePe API
+  private static generateChecksum(payload: any): string {
+    // In a real implementation, you would generate a proper checksum
+    // For now, we'll use a simple hash for testing
+    const data = JSON.stringify(payload);
+    return btoa(data + PHONEPE_CONFIG.saltKey);
   }
 
   // Create order in Firestore
