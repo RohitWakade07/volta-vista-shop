@@ -124,6 +124,8 @@ const ContactUs = () => {
                   <div>
                     <h3 className="font-semibold">Visit Us</h3>
                     <p className="text-muted-foreground">
+                      Tejas Kailas Ahire
+                      <br />
                       Ultron Inov<br />
                       Near Taaramma Bhojanaly<br />
                       Shatrunjay Nagar, Pune 411048<br />

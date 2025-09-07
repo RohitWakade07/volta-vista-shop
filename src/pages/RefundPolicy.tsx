@@ -184,14 +184,95 @@ const RefundPolicy = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold mb-3">11. International Returns</h2>
+              <h2 className="text-xl font-semibold mb-3">11. Replacement Policy</h2>
+              <div className="space-y-4">
+                <p className="text-muted-foreground leading-relaxed">
+                  We offer product replacements for defective or damaged items under the following conditions:
+                </p>
+                
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Eligibility for Replacement</h3>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <li>Product arrives damaged or defective</li>
+                    <li>Product fails within the warranty period</li>
+                    <li>Wrong product was shipped due to our error</li>
+                    <li>Product does not match the description or specifications</li>
+                    <li>Manufacturing defects discovered after delivery</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Replacement Process</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <h4 className="font-medium text-foreground">Step 1: Report the Issue</h4>
+                      <p className="text-muted-foreground text-sm">
+                        Contact us at ultron.inov@gmail.com with your order number, photos of the defect/damage, and a detailed description of the issue.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">Step 2: Verification</h4>
+                      <p className="text-muted-foreground text-sm">
+                        Our team will review your case and may request additional information or photos to verify the issue.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">Step 3: Replacement Authorization</h4>
+                      <p className="text-muted-foreground text-sm">
+                        Once approved, we will provide a replacement order number and shipping details for your new product.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-foreground">Step 4: Return of Defective Item</h4>
+                      <p className="text-muted-foreground text-sm">
+                        You may be required to return the defective item. We will provide a prepaid return label for our error cases.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Replacement Timeframes</h3>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <li><strong>Same Product Replacement:</strong> 3-5 business days processing + shipping time</li>
+                    <li><strong>Upgraded Product:</strong> 5-7 business days processing + shipping time</li>
+                    <li><strong>Out of Stock Items:</strong> 7-14 business days or alternative product offered</li>
+                    <li><strong>International Orders:</strong> 10-21 business days depending on location</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Replacement Conditions</h3>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <li>Replacement must be requested within 30 days of delivery</li>
+                    <li>Product must be in original packaging with all accessories</li>
+                    <li>No signs of misuse, abuse, or unauthorized modifications</li>
+                    <li>Original purchase receipt or order confirmation required</li>
+                    <li>One replacement per order unless additional defects are found</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h3 className="text-lg font-medium mb-2">Shipping for Replacements</h3>
+                  <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                    <li><strong>Our Error:</strong> Free shipping for replacement product and return of defective item</li>
+                    <li><strong>Manufacturing Defect:</strong> Free shipping for replacement product</li>
+                    <li><strong>Customer Error:</strong> Customer pays for replacement shipping</li>
+                    <li><strong>Upgrade Requests:</strong> Customer pays price difference and shipping</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-semibold mb-3">12. International Returns</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For international orders, return shipping costs are the responsibility of the customer. Refunds will be processed in the original currency, and any currency conversion fees or international transaction fees are non-refundable.
               </p>
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold mb-3">12. Contact Information</h2>
+              <h2 className="text-xl font-semibold mb-3">13. Contact Information</h2>
               <p className="text-muted-foreground leading-relaxed">
                 For refund requests or questions about this policy, please contact us:
               </p>
@@ -203,7 +284,7 @@ const RefundPolicy = () => {
             </div>
 
             <div>
-              <h2 className="text-xl font-semibold mb-3">13. Policy Updates</h2>
+              <h2 className="text-xl font-semibold mb-3">14. Policy Updates</h2>
               <p className="text-muted-foreground leading-relaxed">
                 We reserve the right to modify this Refund Policy at any time. Changes will be posted on this page with an updated "Last updated" date. Continued use of our service after changes constitutes acceptance of the updated policy.
               </p>
