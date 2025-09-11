@@ -14,9 +14,9 @@ import Dashboard from '@/pages/admin/Dashboard';
 import Products from '@/pages/admin/Products';
 import OrdersAdmin from '@/pages/admin/Orders';
 import ImageUpload from '@/pages/admin/ImageUpload';
+import PromosAdmin from '@/pages/admin/Promos';
 import Profile from '@/pages/Profile';
 import Checkout from '@/pages/Checkout';
-import PaymentTest from '@/pages/PaymentTest';
 import PaymentSuccess from '@/pages/PaymentSuccess';
 import OrderDetails from '@/pages/OrderDetails';
 import Cart from '@/pages/Cart';
@@ -73,6 +73,11 @@ function App() {
                     <ImageUpload />
                   </ProtectedRoute>
                 } />
+                <Route path="/admin/promos" element={
+                  <ProtectedRoute>
+                    <PromosAdmin />
+                  </ProtectedRoute>
+                } />
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
@@ -84,7 +89,6 @@ function App() {
                   </ProtectedRoute>
                 } />
                 <Route path="/cart" element={<Cart />} />
-                <Route path="/payment/test" element={<PaymentTest />} />
                 <Route path="/payment/success" element={<PaymentSuccess />} />
                 <Route path="/orders/:id" element={<OrderDetails />} />
                 <Route path="/privacy-policy" element={<PrivacyPolicy />} />

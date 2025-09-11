@@ -20,6 +20,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentService } from '@/services/paymentService';
+import { PromoService } from '@/services/promoService';
 import { Order, CartItem } from '@/types';
 
 const Checkout = () => {
@@ -69,16 +70,14 @@ const Checkout = () => {
 
   const computeDiscount = (items: CartItem[], codeRaw: string) => {
     const code = (codeRaw || '').trim().toUpperCase();
-    if (code === 'FRESHERS2025') {
-      const kit = items.find(i => i.name.toLowerCase().includes('arduino kit'));
-      if (kit) {
-        const kitTotal = kit.price * kit.quantity;
-        const desired = 1249 * kit.quantity;
-        return Math.max(0, kitTotal - desired);
-      }
-      return 250;
-    }
-    return 0;
+    // Client estimate; final validation occurs on server/DB lookup
+    try {
+      // Fire-and-forget lookup to update discount from DB
+      PromoService.findByCode(code).then(p => {
+        if (p) setDiscount(Math.min(items.reduce((s, i) => s + i.price * i.quantity, 0), p.amount));
+      });
+    } catch {}
+    return discount;
   };
 
   useEffect(() => {
@@ -144,16 +143,31 @@ const Checkout = () => {
       // Clear cart storage now that an order exists
       try { localStorage.removeItem('vv_cart'); } catch {}
       
-      // Generate PhonePe payment URL
-      const paymentUrl = await PaymentService.createPhonePePayment({
-        ...orderData,
-        id: orderId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+      // Request a PhonePe payment URL from backend then redirect
+      const isProdHost = window.location.hostname.endsWith('ultroninov.in');
+      const base = isProdHost ? '' : 'https://ultroninov.in';
+      const resp = await fetch(`${base}/phonepe/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          amountPaise: Math.round(total * 100),
+          userId: orderData.userId,
+          mobileNumber: orderData.shippingAddress.phone,
+          // Always use production domain for PhonePe redirect/callback
+          redirectBaseUrl: 'https://ultroninov.in',
+        })
       });
-
-      // Redirect to payment page
-      window.location.href = paymentUrl;
+      let data: any = null;
+      try {
+        const ct = resp.headers.get('content-type') || '';
+        data = ct.includes('application/json') ? await resp.json() : null;
+      } catch {}
+      if (!resp.ok || !data?.url) {
+        const msg = data?.message || data?.error || `Failed (${resp.status})`;
+        throw new Error(`Unable to start payment. ${msg}`);
+      }
+      window.location.href = data.url;
 
     } catch (error: any) {
       setError(error.message || 'Failed to process payment');

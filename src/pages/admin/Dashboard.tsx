@@ -217,6 +217,12 @@ const Dashboard = () => {
                 </Button>
               </Link>
               <Link to="/admin/orders">
+              <Link to="/admin/promos">
+                <div className="p-6 border rounded-lg hover:bg-muted transition">
+                  <h3 className="font-semibold">Promos</h3>
+                  <p className="text-sm text-muted-foreground">Create and manage promo codes</p>
+                </div>
+              </Link>
                 <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
                   <ShoppingCart className="h-6 w-6" />
                   <span>View Orders</span>

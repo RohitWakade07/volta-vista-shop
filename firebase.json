@@ -17,6 +17,18 @@
     ],
     "rewrites": [
       {
+        "source": "/phonepe/create",
+        "function": {
+          "functionId": "phonepeCreate"
+        }
+      },
+      {
+        "source": "/phonepe/webhook",
+        "function": {
+          "functionId": "phonepeWebhook"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
