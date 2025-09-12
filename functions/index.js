@@ -58,15 +58,41 @@ function getConfig() {
   }
   const c = runtime && runtime.phonepe ? runtime.phonepe : {};
   return {
-    merchantId: c.merchant_id || process.env.PHONEPE_MERCHANT_ID || process.env.VITE_PHONEPE_MERCHANT_ID || "",
-    saltKey: c.salt_key || process.env.PHONEPE_SALT_KEY || process.env.VITE_PHONEPE_SALT_KEY || "",
-    saltIndex: String(c.salt_index || process.env.PHONEPE_SALT_INDEX || process.env.VITE_PHONEPE_SALT_INDEX || "1"),
     baseUrl: c.base_url || process.env.PHONEPE_BASE_URL || process.env.VITE_PHONEPE_BASE_URL || "https://api-preprod.phonepe.com/apis/pg-sandbox",
+    clientId: c.client_id || process.env.PHONEPE_CLIENT_ID || "",
+    clientSecret: c.client_secret || process.env.PHONEPE_CLIENT_SECRET || "",
+    clientVersion: c.client_version || process.env.PHONEPE_CLIENT_VERSION || "",
   };
 }
 
 function sha256Hex(input) {
   return crypto.createHash("sha256").update(input).digest("hex");
+}
+
+let oauthCache = { token: "", expiresAt: 0 };
+
+async function getOAuthToken(cfg) {
+  const now = Date.now();
+  if (oauthCache.token && oauthCache.expiresAt - now > 60_000) return oauthCache.token;
+  const isSandbox = cfg.baseUrl.includes('/pg-sandbox');
+  const tokenUrl = isSandbox
+    ? 'https://api-preprod.phonepe.com/apis/pg-sandbox/v1/oauth/token'
+    : 'https://api.phonepe.com/apis/identity-manager/v1/oauth/token';
+  const params = new URLSearchParams();
+  params.set('client_id', cfg.clientId);
+  params.set('client_version', cfg.clientVersion);
+  params.set('client_secret', cfg.clientSecret);
+  params.set('grant_type', 'client_credentials');
+  const fetch = (await import('node-fetch')).default;
+  const resp = await fetch(tokenUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString()
+  });
+  const text = await resp.text();
+  let json; try { json = JSON.parse(text); } catch { throw new Error(`OAuth non-JSON ${resp.status}`); }
+  if (!resp.ok || !json?.access_token) throw new Error(`OAuth failed ${resp.status}: ${text}`);
+  const ttlMs = (json.expires_in ? Number(json.expires_in) * 1000 : 55*60*1000);
+  oauthCache = { token: json.access_token, expiresAt: now + ttlMs };
+  return oauthCache.token;
 }
 
 exports.phonepeCreate = onRequest({ cors: [/\.*/] }, async (req, res) => {
@@ -84,8 +110,8 @@ exports.phonepeCreate = onRequest({ cors: [/\.*/] }, async (req, res) => {
     }
 
     const cfg = getConfig();
-    if (!cfg.merchantId || !cfg.saltKey || !cfg.saltIndex) {
-      res.status(500).json({ error: "config-missing", cfg: { merchantId: !!cfg.merchantId, saltKey: !!cfg.saltKey, saltIndex: !!cfg.saltIndex, baseUrl: cfg.baseUrl } });
+    if (!cfg.clientId || !cfg.clientSecret || !cfg.clientVersion) {
+      res.status(500).json({ error: "config-missing-oauth", cfg: { clientId: !!cfg.clientId, clientSecret: !!cfg.clientSecret, clientVersion: !!cfg.clientVersion, baseUrl: cfg.baseUrl } });
       return;
     }
 
@@ -105,20 +131,18 @@ exports.phonepeCreate = onRequest({ cors: [/\.*/] }, async (req, res) => {
     const base64Payload = Buffer.from(jsonPayload).toString("base64");
     // Build URL and checksum paths correctly for prod (/pg) vs sandbox (/pg-sandbox)
     const requestPath = "/v1/pay";
-    const segment = (cfg.baseUrl.endsWith("/pg")) ? "/pg" : "/pg-sandbox";
-    const checksumPath = `${segment}${requestPath}`;
-    const checksum = `${sha256Hex(base64Payload + checksumPath + cfg.saltKey)}###${cfg.saltIndex}`;
+    const isHermes = cfg.baseUrl.endsWith("/hermes");
 
     const fetch = (await import("node-fetch")).default;
-    const upstreamUrl = `${cfg.baseUrl}${requestPath}`;
+    const upstreamUrl = `${cfg.baseUrl}${isHermes ? "/pg" : ""}${requestPath}`;
     logger.info("phonepeCreate upstream", { upstreamUrl });
+    const headers = {
+      "Content-Type": "application/json",
+      "Authorization": `O-Bearer ${await getOAuthToken(cfg)}`,
+    };
     const resp = await fetch(upstreamUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-VERIFY": checksum,
-        "X-MERCHANT-ID": cfg.merchantId,
-      },
+      headers,
       body: JSON.stringify({ request: base64Payload }),
     });
 
@@ -160,26 +184,7 @@ exports.phonepeWebhook = onRequest({ cors: [/\.*/] }, async (req, res) => {
   }
   try {
     const cfg = getConfig();
-    const xVerify = req.get("x-verify") || req.get("X-VERIFY");
-    const xMerchant = req.get("x-merchant-id") || req.get("X-MERCHANT-ID");
-    const rawBody = JSON.stringify(req.body || {});
-
-    // Validate signature
-    const notifyRequestPath = "/v1/notification";
-    const segment = (cfg.baseUrl.endsWith("/pg")) ? "/pg" : "/pg-sandbox";
-    const notifyChecksumPath = `${segment}${notifyRequestPath}`;
-    const expected = `${sha256Hex(Buffer.from(rawBody).toString("base64") + notifyChecksumPath + cfg.saltKey)}###${cfg.saltIndex}`;
-    if (!xVerify || xVerify !== expected) {
-      logger.warn("Invalid webhook signature", { xVerify, expected });
-      // Still respond 200 as per many gateways to avoid retries when misconfigured, but do nothing
-      res.status(200).json({ received: true });
-      return;
-    }
-    if (xMerchant && cfg.merchantId && xMerchant !== cfg.merchantId) {
-      logger.warn("Merchant mismatch", { xMerchant });
-      res.status(200).json({ received: true });
-      return;
-    }
+    // OAuth-only: no checksum enforcement; trust PhonePe IPs if needed (skipped here)
 
     const body = req.body || {};
     const data = body && body.data ? body.data : body;

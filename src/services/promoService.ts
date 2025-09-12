@@ -8,15 +8,18 @@ export interface Promo {
   amount: number; // in INR
   active: boolean;
   createdAt: Date;
+  productIds?: string[]; // optional list of applicable products
 }
 
 const promosCol = collection(db, 'promos');
 
 export class PromoService {
-  static async create(codeRaw: string, amount: number) {
+  static async create(codeRaw: string, amount: number, productIds: string[] = []) {
     const code = (codeRaw || '').trim().toUpperCase();
-    if (!code || amount <= 0) throw new Error('Invalid promo');
-    await addDoc(promosCol, { code, type: 'flat', amount, active: true, createdAt: new Date() } as any);
+    if (!code) throw new Error('Code is required');
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error('Amount must be greater than 0');
+    if (!Array.isArray(productIds)) throw new Error('productIds must be an array');
+    await addDoc(promosCol, { code, type: 'flat', amount, active: true, createdAt: new Date(), productIds } as any);
   }
 
   static subscribe(onUpdate: (items: Promo[]) => void) {

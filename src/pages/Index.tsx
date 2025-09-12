@@ -89,27 +89,13 @@ const Index = () => {
   const addToCart = (product: Product) => {
     setCart(prevCart => {
       const existingItem = prevCart.find(item => item.id === product.id);
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-      return [...prevCart, { ...product, quantity: 1 }];
+      const updated = existingItem
+        ? prevCart.map(item => item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item)
+        : [...prevCart, { ...product, quantity: 1 }];
+      try { localStorage.setItem('vv_cart', JSON.stringify(updated)); } catch {}
+      return updated;
     });
-    // Persist for mobile cart page
-    setTimeout(() => {
-      try {
-        const toStore = (cart.length ? cart : [{ ...product, quantity: 1 }]) as any;
-        localStorage.setItem('vv_cart', JSON.stringify(toStore));
-      } catch {}
-    }, 0);
-    
-    toast({
-      title: "Added to cart",
-      description: `${product.name} has been added to your cart.`,
-    });
+    toast({ title: "Added to cart", description: `${product.name} has been added to your cart.` });
   };
 
   const removeFromCart = (productId: string) => {
@@ -149,15 +135,13 @@ const Index = () => {
       });
       return;
     }
-    
-    // Add to cart and redirect to checkout
-    addToCart(product);
+
+    // Ensure the product is in cart storage before redirecting
+    const singleItem = [{ ...product, quantity: 1 }];
+    try { localStorage.setItem('vv_cart', JSON.stringify(singleItem)); } catch {}
+    setCart(singleItem);
     navigate('/checkout');
-    
-    toast({
-      title: "Proceeding to checkout",
-      description: `Redirecting to payment for ${product.name}`,
-    });
+    toast({ title: "Proceeding to checkout", description: `Redirecting to payment for ${product.name}` });
   };
 
   const openProductDialog = (product: Product) => {

@@ -70,13 +70,16 @@ const Checkout = () => {
 
   const computeDiscount = (items: CartItem[], codeRaw: string) => {
     const code = (codeRaw || '').trim().toUpperCase();
-    // Client estimate; final validation occurs on server/DB lookup
     try {
-      // Fire-and-forget lookup to update discount from DB
       PromoService.findByCode(code).then(p => {
-        if (p) setDiscount(Math.min(items.reduce((s, i) => s + i.price * i.quantity, 0), p.amount));
+        if (!p) { setDiscount(0); return; }
+        const applicableSet = new Set(p.productIds || []);
+        const applicableTotal = (p.productIds && p.productIds.length > 0)
+          ? items.filter(i => applicableSet.has(i.id)).reduce((s, i) => s + i.price * i.quantity, 0)
+          : items.reduce((s, i) => s + i.price * i.quantity, 0);
+        setDiscount(Math.min(applicableTotal, p.amount));
       });
-    } catch {}
+    } catch { setDiscount(0); }
     return discount;
   };
 
