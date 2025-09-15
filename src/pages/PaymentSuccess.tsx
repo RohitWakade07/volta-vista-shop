@@ -142,7 +142,12 @@ const PaymentSuccess = () => {
             </div>
           </div>
           <h1 className="text-3xl font-bold text-green-600 mb-2">Payment Successful!</h1>
-          <p className="text-muted-foreground">Your order has been placed successfully</p>
+          <p className="text-muted-foreground">Your order details will be updated shortly. For support and status, join our community.</p>
+          <div className="mt-3">
+            <a href="https://chat.whatsapp.com/DTXpXQY5zvyIQRmcpUXGHP" target="_blank" rel="noreferrer">
+              <Button variant="outline">Join our WhatsApp Community</Button>
+            </a>
+          </div>
         </div>
 
         {/* Success Card */}
@@ -261,9 +266,6 @@ const PaymentSuccess = () => {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button onClick={handleViewOrders} className="flex-1">
-            View My Orders
-          </Button>
           <Button variant="outline" onClick={handleContinueShopping} className="flex-1">
             Continue Shopping
           </Button>

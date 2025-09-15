@@ -13,6 +13,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { ProductService } from '@/services/productService';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Product } from '@/types';
+import { SettingsService, FeaturedOfferConfig } from '@/services/settingsService';
 
 interface CartItem extends Product {
   quantity: number;
@@ -42,6 +43,7 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [featuredOffer, setFeaturedOffer] = useState<FeaturedOfferConfig | null>(null);
 
   const categories = [
     { id: 'all', name: 'All Categories' },
@@ -55,6 +57,12 @@ const Index = () => {
       setProducts(items as Product[]);
       setLoading(false);
     });
+    return () => unsub();
+  }, []);
+
+  // Subscribe to featured offer config
+  useEffect(() => {
+    const unsub = SettingsService.subscribeFeaturedOffer((cfg) => setFeaturedOffer(cfg));
     return () => unsub();
   }, []);
 
@@ -357,49 +365,55 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Offer Banner */}
-      <section className="px-4">
-        <div className="container mx-auto">
-          <Card className="border-primary/30 bg-card">
-            <CardContent className="py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge className="bg-primary text-primary-foreground">Featured Offer</Badge>
-                  <span className="text-xs text-muted-foreground">Limited time</span>
+      {/* Featured Offer Banner (dynamic) */}
+      {featuredOffer?.active && (
+        <section className="px-4">
+          <div className="container mx-auto">
+            <Card className="border-primary/30 bg-card">
+              <CardContent className="py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge className="bg-primary text-primary-foreground">Featured Offer</Badge>
+                    {featuredOffer.badgeText ? (
+                      <span className="text-xs text-muted-foreground">{featuredOffer.badgeText}</span>
+                    ) : null}
+                  </div>
+                  <CardTitle className="text-xl">{featuredOffer.title}</CardTitle>
+                  {featuredOffer.subtitle ? (
+                    <CardDescription className="mt-1">{featuredOffer.subtitle}</CardDescription>
+                  ) : null}
+                  <div className="mt-3 flex items-center gap-3">
+                    <span className="text-2xl font-bold text-primary">₹{featuredOffer.price}</span>
+                    {featuredOffer.originalPrice ? (
+                      <span className="text-sm text-muted-foreground line-through">₹{featuredOffer.originalPrice}</span>
+                    ) : null}
+                  </div>
                 </div>
-                <CardTitle className="text-xl">Arduino Kit Offer for Freshers</CardTitle>
-                <CardDescription className="mt-1">
-                  Includes ebook for building projects, 24/7 customer & project support, and Free Soldering Anytime.
-                </CardDescription>
-                <div className="mt-3 flex items-center gap-3">
-                  <span className="text-2xl font-bold text-primary">₹1079</span>
-                  <span className="text-sm text-muted-foreground line-through">₹1499</span>
-                  <Badge variant="secondary">Use code: FRESHERS2025</Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => {
+                      const product = products.find(p => p.id === featuredOffer.productId);
+                      if (product) {
+                        try {
+                          localStorage.setItem('vv_cart', JSON.stringify([{ ...product, quantity: 1 }]));
+                          if (featuredOffer.promoCode) {
+                            localStorage.setItem('vv_promo', featuredOffer.promoCode);
+                          }
+                        } catch {}
+                        navigate('/checkout');
+                      } else {
+                        toast({ title: 'Please wait', description: 'Loading the offer, try again in a moment.' });
+                      }
+                    }}
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" /> Get Offer
+                  </Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => {
-                    const kit = products.find(p => p.id === '13');
-                    if (kit) {
-                      // Direct purchase flow: set promo and go to checkout
-                      try {
-                        localStorage.setItem('vv_cart', JSON.stringify([{ ...kit, quantity: 1 }]));
-                        localStorage.setItem('vv_promo', 'FRESHERS2025');
-                      } catch {}
-                      navigate('/checkout');
-                    } else {
-                      toast({ title: 'Please wait', description: 'Loading the offer, try again in a moment.' });
-                    }
-                  }}
-                >
-                  <CreditCard className="h-4 w-4 mr-2" /> Get Offer
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       <div className="container mx-auto px-4 pb-8">
         <div className="flex flex-col lg:flex-row gap-8">

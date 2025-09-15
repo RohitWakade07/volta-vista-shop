@@ -36,13 +36,11 @@ const Checkout = () => {
   const [discount, setDiscount] = useState(0);
   
   // Form state
-  const [formData, setFormData] = useState({
+  const [studentData, setStudentData] = useState({
     name: userProfile?.displayName || '',
+    branchDiv: '',
     phone: userProfile?.phone || '',
-    address: userProfile?.address?.street || '',
-    city: userProfile?.address?.city || '',
-    state: userProfile?.address?.state || '',
-    pincode: userProfile?.address?.pincode || '',
+    campus: '' as '' | 'Bibwewadi' | 'Kondhwa',
   });
 
   // Load cart items dynamically from localStorage (populated by product pages)
@@ -68,40 +66,46 @@ const Checkout = () => {
   const shipping = 0; // Shipping disabled for now
   const total = Math.max(0, subtotal + shipping - discount);
 
-  const computeDiscount = (items: CartItem[], codeRaw: string) => {
+  const computeDiscount = async (items: CartItem[], codeRaw: string) => {
     const code = (codeRaw || '').trim().toUpperCase();
+    if (!code) {
+      setDiscount(0);
+      return 0;
+    }
+    
     try {
-      PromoService.findByCode(code).then(p => {
-        if (!p) { setDiscount(0); return; }
-        const applicableSet = new Set(p.productIds || []);
-        const applicableTotal = (p.productIds && p.productIds.length > 0)
-          ? items.filter(i => applicableSet.has(i.id)).reduce((s, i) => s + i.price * i.quantity, 0)
-          : items.reduce((s, i) => s + i.price * i.quantity, 0);
-        setDiscount(Math.min(applicableTotal, p.amount));
-      });
-    } catch { setDiscount(0); }
-    return discount;
+      const promo = await PromoService.findByCode(code);
+      if (!promo) { 
+        setDiscount(0); 
+        return 0; 
+      }
+      
+      const applicableSet = new Set(promo.productIds || []);
+      const applicableTotal = (promo.productIds && promo.productIds.length > 0)
+        ? items.filter(i => applicableSet.has(i.id)).reduce((s, i) => s + i.price * i.quantity, 0)
+        : items.reduce((s, i) => s + i.price * i.quantity, 0);
+      
+      const newDiscount = Math.min(applicableTotal, promo.amount);
+      setDiscount(newDiscount);
+      return newDiscount;
+    } catch (error) {
+      console.error('Error computing discount:', error);
+      setDiscount(0);
+      return 0;
+    }
   };
 
   useEffect(() => {
-    setDiscount(computeDiscount(cartItems, promoCode));
+    computeDiscount(cartItems, promoCode);
   }, [cartItems, promoCode]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
-      ...prev,
-      [e.target.name]: e.target.value
-    }));
-  };
 
   const validateForm = () => {
-    if (!formData.name.trim()) return 'Name is required';
-    if (!formData.phone.trim()) return 'Phone number is required';
-    if (!formData.address.trim()) return 'Address is required';
-    if (!formData.city.trim()) return 'City is required';
-    if (!formData.state.trim()) return 'State is required';
-    if (!formData.pincode.trim()) return 'Pincode is required';
     if (cartItems.length === 0) return 'Cart is empty';
+    if (!studentData.name.trim()) return 'Student name is required';
+    if (!studentData.branchDiv.trim()) return 'Branch/Div is required';
+    if (!studentData.phone.trim()) return 'Student phone is required';
+    if (!studentData.campus) return 'Select a campus';
     return null;
   };
 
@@ -116,8 +120,12 @@ const Checkout = () => {
     setPaymentLoading(true);
 
     try {
+      // Ensure discount is valid even if promo validation failed
+      const finalDiscount = Math.max(0, discount || 0);
+      const finalTotal = Math.max(0, subtotal + shipping - finalDiscount);
+      
       // Create order
-      const orderData: Omit<Order, 'id' | 'createdAt' | 'updatedAt'> = {
+      const orderBase: Omit<Order, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: userProfile?.uid || '',
         items: cartItems.map(item => ({
           id: item.id,
@@ -126,51 +134,42 @@ const Checkout = () => {
           quantity: item.quantity,
           image: item.image
         })),
-        total,
+        total: finalTotal,
         status: 'pending',
         paymentStatus: 'pending',
         paymentMethod: 'phonepe',
-        promoCode: promoCode.trim().toUpperCase() || undefined,
-        discount,
+        discount: finalDiscount,
         shippingAddress: {
-          name: formData.name,
-          phone: formData.phone,
-          address: formData.address,
-          city: formData.city,
-          state: formData.state,
-          pincode: formData.pincode,
+          name: studentData.name,
+          phone: studentData.phone,
+          address: `${studentData.campus} Campus Pickup`,
+          city: studentData.campus || '',
+          state: '',
+          pincode: '',
         }
       };
+
+      // Add promoCode only if it's not empty
+      if (promoCode.trim()) {
+        orderBase.promoCode = promoCode.trim().toUpperCase();
+      }
+
+      const orderData = {
+        ...orderBase,
+        student: {
+          name: studentData.name,
+          branchDiv: studentData.branchDiv,
+          phone: studentData.phone,
+          campus: studentData.campus,
+        }
+      } as any;
 
       const orderId = await PaymentService.createOrder(orderData);
       // Clear cart storage now that an order exists
       try { localStorage.removeItem('vv_cart'); } catch {}
       
-      // Request a PhonePe payment URL from backend then redirect
-      const isProdHost = window.location.hostname.endsWith('ultroninov.in');
-      const base = isProdHost ? '' : 'https://ultroninov.in';
-      const resp = await fetch(`${base}/phonepe/create`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId,
-          amountPaise: Math.round(total * 100),
-          userId: orderData.userId,
-          mobileNumber: orderData.shippingAddress.phone,
-          // Always use production domain for PhonePe redirect/callback
-          redirectBaseUrl: 'https://ultroninov.in',
-        })
-      });
-      let data: any = null;
-      try {
-        const ct = resp.headers.get('content-type') || '';
-        data = ct.includes('application/json') ? await resp.json() : null;
-      } catch {}
-      if (!resp.ok || !data?.url) {
-        const msg = data?.message || data?.error || `Failed (${resp.status})`;
-        throw new Error(`Unable to start payment. ${msg}`);
-      }
-      window.location.href = data.url;
+      // Navigate to simple QR payments page
+      navigate(`/payments-qr?orderId=${encodeURIComponent(orderId)}&amount=${encodeURIComponent(finalTotal.toFixed(0))}`);
 
     } catch (error: any) {
       setError(error.message || 'Failed to process payment');
@@ -297,9 +296,35 @@ const Checkout = () => {
                   <MapPin className="h-5 w-5" />
                   <span>Shipping Information</span>
                 </CardTitle>
-                <CardDescription>Enter your delivery details</CardDescription>
+                <CardDescription>Enter your student details for campus pickup</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="space-y-4 p-4 border rounded-md">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sname">Student Name</Label>
+                      <Input id="sname" value={studentData.name} onChange={(e) => setStudentData(prev => ({ ...prev, name: e.target.value }))} placeholder="Enter student name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="sphone">Student Phone</Label>
+                      <Input id="sphone" value={studentData.phone} onChange={(e) => setStudentData(prev => ({ ...prev, phone: e.target.value }))} placeholder="Enter phone number" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="sbranch">Branch / Div</Label>
+                      <Input id="sbranch" value={studentData.branchDiv} onChange={(e) => setStudentData(prev => ({ ...prev, branchDiv: e.target.value }))} placeholder="e.g. E&TC Div B" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="scampus" className="text-black">Campus</Label>
+                      <select id="scampus" className="border rounded-md h-10 px-3 text-black" value={studentData.campus} onChange={(e) => setStudentData(prev => ({ ...prev, campus: e.target.value as any }))}>
+                        <option value="">Select campus</option>
+                        <option value="Bibwewadi">Bibwewadi</option>
+                        <option value="Kondhwa">Kondhwa</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
                 {error && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -307,80 +332,6 @@ const Checkout = () => {
                   </Alert>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        placeholder="Enter your full name"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        className="pl-10"
-                        placeholder="Enter phone number"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Input
-                    id="address"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="Enter your address"
-                  />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      placeholder="City"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="state">State</Label>
-                    <Input
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      placeholder="State"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="pincode">Pincode</Label>
-                    <Input
-                      id="pincode"
-                      name="pincode"
-                      value={formData.pincode}
-                      onChange={handleInputChange}
-                      placeholder="Pincode"
-                    />
-                  </div>
-                </div>
               </CardContent>
             </Card>
 

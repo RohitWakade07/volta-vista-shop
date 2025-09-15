@@ -217,21 +217,27 @@ const Dashboard = () => {
                 </Button>
               </Link>
               <Link to="/admin/orders">
-              <Link to="/admin/promos">
-                <div className="p-6 border rounded-lg hover:bg-muted transition">
-                  <h3 className="font-semibold">Promos</h3>
-                  <p className="text-sm text-muted-foreground">Create and manage promo codes</p>
-                </div>
-              </Link>
                 <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
                   <ShoppingCart className="h-6 w-6" />
                   <span>View Orders</span>
+                </Button>
+              </Link>
+              <Link to="/admin/promos">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
+                  <DollarSign className="h-6 w-6" />
+                  <span>Promo Codes</span>
                 </Button>
               </Link>
               <Link to="/admin/images">
                 <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
                   <Image className="h-6 w-6" />
                   <span>Upload Images</span>
+                </Button>
+              </Link>
+              <Link to="/admin/featured-offer">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">
+                  <Settings className="h-6 w-6" />
+                  <span>Featured Offer</span>
                 </Button>
               </Link>
               <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2" disabled>

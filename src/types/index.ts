@@ -27,6 +27,12 @@ export interface Order {
   trackingNumber?: string;
   promoCode?: string;
   discount?: number;
+  student?: {
+    name: string;
+    branchDiv: string;
+    phone: string;
+    campus: 'Bibwewadi' | 'Kondhwa';
+  };
 }
 
 export interface PaymentDetails {
