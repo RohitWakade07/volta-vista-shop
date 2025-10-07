@@ -1,4 +1,4 @@
-import { collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 export interface AdminProduct {
@@ -6,6 +6,7 @@ export interface AdminProduct {
   name: string;
   price: number;
   originalPrice?: number;
+  image: string;
   description: string;
   category: string;
   inStock: boolean;
@@ -13,6 +14,10 @@ export interface AdminProduct {
   reviews?: number;
   isNew?: boolean;
   isFeatured?: boolean;
+  allowPartialPayment?: boolean;
+  images?: string[];
+  whatsInBox?: string[];
+  warranty?: string;
 }
 
 export class ProductService {
@@ -35,6 +40,18 @@ export class ProductService {
 
   static async deleteProduct(id: string) {
     await deleteDoc(doc(db, 'products', id));
+  }
+
+  static async getProductById(id: string): Promise<AdminProduct | null> {       
+    // Validate that id is not empty, not "products", and is a valid string
+    if (!id || id.trim() === '' || id === 'products') {
+      throw new Error(`Invalid product ID: "${id}". Product ID cannot be empty or "products".`);
+    }
+    
+    const ref = doc(db, 'products', id);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...(snap.data() as any) } as AdminProduct;
   }
 }
 

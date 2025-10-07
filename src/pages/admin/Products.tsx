@@ -4,10 +4,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Plus,
+  Edit,
+  Trash2,
   Package,
   Search,
   Filter,
@@ -15,11 +16,19 @@ import {
   Check,
   Settings,
   X,
-  Save
+  Save,
+  Upload,
+  Link,
+  ExternalLink,
+  ZoomIn,
+  Copy,
+  Hash
 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProductService, AdminProduct } from '@/services/productService';
+import { storage } from '@/lib/firebase';
+import { ref, getDownloadURL, listAll } from 'firebase/storage';
 
 const Products = () => {
   const { toast } = useToast();
@@ -43,7 +52,13 @@ const Products = () => {
   const [editId, setEditId] = useState<string | null>(null);
   const [showImageSelector, setShowImageSelector] = useState(false);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [showGoogleDriveUpload, setShowGoogleDriveUpload] = useState(false);    
+  const [googleDriveUrl, setGoogleDriveUrl] = useState('');
   const [newCategory, setNewCategory] = useState('');
+  const [showUploadedImages, setShowUploadedImages] = useState(false);
+  const [uploadedImages, setUploadedImages] = useState<{id: string, name: string, url: string}[]>([]);
+  const [loadingUploadedImages, setLoadingUploadedImages] = useState(false);
+  const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
   const [categories, setCategories] = useState([
     { id: 'all', name: 'All Categories' },
     { id: 'Microcontrollers', name: 'Microcontrollers' },
@@ -71,6 +86,62 @@ const Products = () => {
     const unsub = ProductService.subscribeProducts(setProducts);
     return () => unsub();
   }, []);
+
+  // Copy product ID to clipboard
+  const copyProductId = async (productId: string) => {
+    try {
+      await navigator.clipboard.writeText(productId);
+      setCopiedProductId(productId);
+      toast({
+        title: "Product ID Copied",
+        description: `Product ID "${productId}" copied to clipboard`,
+      });
+      setTimeout(() => setCopiedProductId(null), 2000);
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy product ID to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Load uploaded images from Firebase Storage
+  const loadUploadedImages = async () => {
+    if (!storage) return;
+    
+    setLoadingUploadedImages(true);
+    try {
+      const listRef = ref(storage, 'product-images');
+      const result = await listAll(listRef);
+      
+      const imagePromises = result.items.map(async (itemRef) => {
+        try {
+          const url = await getDownloadURL(itemRef);
+          return {
+            id: itemRef.name,
+            name: itemRef.name,
+            url: url
+          };
+        } catch (error) {
+          console.error('Error getting download URL for', itemRef.name, error);
+          return null;
+        }
+      });
+
+      const images = (await Promise.all(imagePromises)).filter(Boolean) as {id: string, name: string, url: string}[];
+      setUploadedImages(images);
+    } catch (error) {
+      console.error('Error loading images:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load uploaded images",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingUploadedImages(false);
+    }
+  };
 
 
   const filteredProducts = products.filter(product => {
@@ -105,8 +176,6 @@ const Products = () => {
         description: newProduct.description.trim() || '—',
         category: newProduct.category,
         inStock: true,
-        rating: 0,
-        reviews: 0,
         isNew: true,
         isFeatured: false,
         images: newProduct.images ? newProduct.images.split(',').map(url => url.trim()).filter(Boolean) : undefined,
@@ -134,6 +203,38 @@ const Products = () => {
     toast({
       title: "Image Selected",
       description: "Image has been set for the product",
+    });
+  };
+
+  const convertGoogleDriveUrl = (url: string) => {
+    // Convert Google Drive sharing URL to direct image URL
+    // Format: https://drive.google.com/file/d/FILE_ID/view?usp=sharing
+    // To: https://drive.google.com/uc?export=view&id=FILE_ID
+    const fileIdMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
+    }
+    return url;
+  };
+
+  const handleGoogleDriveUpload = () => {
+    if (!googleDriveUrl.trim()) {
+      toast({
+        title: "Invalid URL",
+        description: "Please enter a valid Google Drive URL",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const directUrl = convertGoogleDriveUrl(googleDriveUrl);
+    setNewProduct(prev => ({ ...prev, image: directUrl }));
+    setGoogleDriveUrl('');
+    setShowGoogleDriveUpload(false);
+    toast({
+      title: "Image Added",
+      description: "Google Drive image has been converted and added",
     });
   };
 
@@ -241,6 +342,10 @@ const Products = () => {
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Add New Product</CardTitle>
+            <CardDescription>
+              Each product has a unique ID that you can copy and use in the Featured Offer page. 
+              Look for the "Copy ID for Featured" button on each product card.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
@@ -269,17 +374,60 @@ const Products = () => {
                     id="np-image" 
                     value={newProduct.image} 
                     onChange={(e) => setNewProduct(p => ({ ...p, image: e.target.value }))} 
-                    placeholder="https://... or select from public folder" 
+                    placeholder="https://... or select from options below" 
                     className="flex-1"
                   />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setShowImageSelector(!showImageSelector)}
+                </div>
+                
+                {/* Image Source Options */}
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      loadUploadedImages();
+                      setShowUploadedImages(true);
+                    }}    
+                    className="flex items-center gap-2"
+                  >
+                    <Upload className="h-4 w-4" />
+                    Uploaded Images
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowImageSelector(!showImageSelector)}    
                     className="flex items-center gap-2"
                   >
                     <Image className="h-4 w-4" />
-                    Select
+                    Public Folder
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowGoogleDriveUpload(!showGoogleDriveUpload)}                                                                            
+                    className="flex items-center gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    Google Drive
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      const url = prompt("Enter image URL:");
+                      if (url) {
+                        setNewProduct(prev => ({ ...prev, image: url }));       
+                        toast({
+                          title: "Image Added",
+                          description: "Custom image URL has been added",       
+                        });
+                      }
+                    }}
+                    className="flex items-center gap-2"
+                  >
+                    <Link className="h-4 w-4" />
+                    Custom URL
                   </Button>
                 </div>
                 
@@ -368,10 +516,159 @@ const Products = () => {
                     </Card>
                   </div>
                 )}
+
+                {/* Google Drive Upload Modal */}
+                {showGoogleDriveUpload && (
+                  <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <Card className="w-full max-w-md">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Upload className="h-5 w-5" />
+                          Upload from Google Drive
+                        </CardTitle>
+                        <CardDescription>
+                          Paste your Google Drive image sharing URL
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div>
+                          <Label htmlFor="google-drive-url">Google Drive URL</Label>
+                          <Input
+                            id="google-drive-url"
+                            value={googleDriveUrl}
+                            onChange={(e) => setGoogleDriveUrl(e.target.value)}
+                            placeholder="https://drive.google.com/file/d/..."
+                            className="mt-1"
+                          />
+                        </div>
+                        
+                        <div className="bg-blue-50 p-3 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <ExternalLink className="h-4 w-4 text-blue-600 mt-0.5" />
+                            <div className="text-sm text-blue-800">
+                              <p className="font-medium mb-1">How to get Google Drive URL:</p>
+                              <ol className="list-decimal list-inside space-y-1 text-xs">
+                                <li>Upload your image to Google Drive</li>
+                                <li>Right-click the image → "Get link"</li>
+                                <li>Set sharing to "Anyone with the link"</li>
+                                <li>Copy the sharing URL and paste it above</li>
+                              </ol>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleGoogleDriveUpload}
+                            className="flex-1"
+                            disabled={!googleDriveUrl.trim()}
+                          >
+                            <Upload className="h-4 w-4 mr-2" />
+                            Add Image
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setShowGoogleDriveUpload(false);
+                              setGoogleDriveUrl('');
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
+                {/* Uploaded Images Modal */}
+                <Dialog open={showUploadedImages} onOpenChange={setShowUploadedImages}>
+                  <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        Select from Uploaded Images
+                      </DialogTitle>
+                      <DialogDescription>
+                        Choose an image from your uploaded images
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    {loadingUploadedImages ? (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <span className="ml-2 text-muted-foreground">Loading images...</span>
+                      </div>
+                    ) : uploadedImages.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {uploadedImages.map((image) => (
+                          <div
+                            key={image.id}
+                            className={`relative group cursor-pointer border rounded-lg overflow-hidden transition-all hover:shadow-lg ${
+                              newProduct.image === image.url ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'
+                            }`}
+                            onClick={() => {
+                              setNewProduct(prev => ({ ...prev, image: image.url }));
+                              setShowUploadedImages(false);
+                              toast({
+                                title: "Image Selected",
+                                description: `${image.name} has been selected`,
+                              });
+                            }}
+                          >
+                            <div className="aspect-square bg-muted flex items-center justify-center">
+                              <img
+                                src={image.url}
+                                alt={image.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
+                              />
+                              <div className="hidden text-muted-foreground text-xs text-center p-2">
+                                {image.name}
+                              </div>
+                            </div>
+
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Button
+                                size="sm"
+                                variant="secondary"
+                                className="flex items-center gap-2"
+                              >
+                                <Check className="h-4 w-4" />
+                                Select
+                              </Button>
+                            </div>
+
+                            <div className="p-2 bg-background">
+                              <p className="text-sm font-medium truncate">{image.name}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <h3 className="text-lg font-medium mb-2">No uploaded images</h3>
+                        <p className="text-muted-foreground mb-4">Upload images first using the Image Upload page</p>
+                        <Button
+                          variant="outline"
+                          onClick={() => window.open('/admin/images', '_blank')}
+                          className="flex items-center gap-2"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Go to Image Upload
+                        </Button>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="np-desc">Description</Label>
-                <Input id="np-desc" value={newProduct.description} onChange={(e) => setNewProduct(p => ({ ...p, description: e.target.value }))} />
+                <Input id="np-desc" value={newProduct.description} onChange={(e) => setNewProduct(p => ({ ...p, description: e.target.value }))} />             
               </div>
               <div className="md:col-span-2">
                 <Label htmlFor="np-images">Additional Images (comma-separated URLs)</Label>
@@ -432,11 +729,30 @@ const Products = () => {
                       </Badge>
                     </div>
                     
+                    {/* Product ID Display */}
+                    <div className="flex items-center space-x-2 mb-2">
+                      <div className="flex items-center space-x-1 bg-muted px-2 py-1 rounded text-sm">
+                        <Hash className="h-3 w-3 text-muted-foreground" />
+                        <span className="font-mono text-xs">ID: {product.id}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyProductId(product.id)}
+                        className="h-6 px-2 text-xs"
+                      >
+                        {copiedProductId === product.id ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                    
                     <p className="text-sm text-muted-foreground mb-2">{product.description}</p>
                     
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                       <span>Category: {product.category}</span>
-                      <span>Rating: {product.rating}/5 ({product.reviews} reviews)</span>
                     </div>
                     
                     <div className="flex items-center space-x-2 mt-2">
@@ -463,13 +779,13 @@ const Products = () => {
                         name: product.name, 
                         price: String(product.price), 
                         originalPrice: product.originalPrice ? String(product.originalPrice) : '', 
-                        image: product.image, 
+                        image: (product as any).image || '', 
                         description: product.description, 
                         category: product.category, 
                         inStock: product.inStock,
-                        images: product.images ? product.images.join(', ') : '',
-                        whatsInBox: product.whatsInBox ? product.whatsInBox.join(', ') : '',
-                        warranty: product.warranty || ''
+                        images: (product as any).images ? (product as any).images.join(', ') : '',
+                        whatsInBox: (product as any).whatsInBox ? (product as any).whatsInBox.join(', ') : '',
+                        warranty: (product as any).warranty || ''
                       }); 
                     }}>
                       <Edit className="h-4 w-4" />
@@ -484,8 +800,26 @@ const Products = () => {
                     <Button variant={product.isFeatured ? 'default' : 'outline'} size="sm" onClick={() => ProductService.updateProduct(product.id, { isFeatured: !product.isFeatured })}>
                       {product.isFeatured ? 'Featured' : 'Mark Featured'}
                     </Button>
+                    <Button variant={product.allowPartialPayment ? 'default' : 'outline'} size="sm" onClick={() => ProductService.updateProduct(product.id, { allowPartialPayment: !product.allowPartialPayment })}>
+                      {product.allowPartialPayment ? '50% Pay Enabled' : 'Enable 50% Pay'}
+                    </Button>
                     <Button variant={product.originalPrice ? 'default' : 'outline'} size="sm" onClick={() => ProductService.updateProduct(product.id, { originalPrice: product.originalPrice ? undefined : Math.round(product.price * 1.2) })}>
                       {product.originalPrice ? 'Clear Sale' : 'Add Sale'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => {
+                        copyProductId(product.id);
+                        toast({
+                          title: "Ready for Featured Product",
+                          description: `Product ID "${product.id}" copied. You can now paste it in the Featured Offer page.`,
+                        });
+                      }}
+                      className="text-blue-600 hover:text-blue-700"
+                    >
+                      <Hash className="h-3 w-3 mr-1" />
+                      Copy ID for Featured
                     </Button>
                   </div>
                 </div>

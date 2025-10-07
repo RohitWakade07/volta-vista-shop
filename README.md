@@ -2,7 +2,7 @@
 
 ## Project info
 
-**URL**: https://lovable.dev/projects/4821d864-faba-41a8-abe7-8fed449e1c48
+
 
 ## About Ultron Shop
 

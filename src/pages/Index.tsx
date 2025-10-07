@@ -1,11 +1,11 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ShoppingCart, Plus, Minus, Search, Star, Truck, Shield, Zap, Heart, Grid, List, User, LogOut, CreditCard, Mail, Phone, Moon, Sun } from "lucide-react";
+import { ShoppingCart, Plus, Minus, Search, Truck, Shield, Zap, Heart, Grid, List, User, LogOut, CreditCard, Mail, Phone, Moon, Sun, ZoomIn, Package, MessageCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -35,6 +35,9 @@ const Index = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isProductDialogOpen, setIsProductDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
@@ -44,6 +47,10 @@ const Index = () => {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const [featuredOffer, setFeaturedOffer] = useState<FeaturedOfferConfig | null>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [selectedImageForView, setSelectedImageForView] = useState<{url: string, alt: string} | null>(null);
+
+
 
   const categories = [
     { id: 'all', name: 'All Categories' },
@@ -60,11 +67,70 @@ const Index = () => {
     return () => unsub();
   }, []);
 
+  // Build recommended keywords from products
+  useEffect(() => {
+    const stopwords = new Set([
+      'the','and','for','with','your','from','you','kit','set','tool','board','module','this','that','are','our','new','best','high','low','via','into','out','over','under','onto','to','in','on','of','by','at','is','a','an','or','as','be','it','its','it\'s','we','us','they','them','their','your','yours','his','her','hers','was','were','will','can','may','not','no','yes'
+    ]);
+    const counts = new Map<string, number>();
+    const addWord = (w: string) => {
+      const word = w.toLowerCase().replace(/[^a-z0-9+#.]/g, '');
+      if (!word || word.length < 3 || stopwords.has(word)) return;
+      counts.set(word, (counts.get(word) || 0) + 1);
+    };
+    products.forEach(p => {
+      (p.name || '').split(/\s+/).forEach(addWord);
+      (p.description || '').split(/\s+/).forEach(addWord);
+      addWord(p.category || '');
+    });
+    const top = Array.from(counts.entries())
+      .sort((a,b) => b[1]-a[1])
+      .map(([w]) => w)
+      .slice(0, 20);
+    setKeywords(top);
+  }, [products]);
+
+  // Suggestions update as user types
+  useEffect(() => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    if (!q) {
+      setSuggestions(keywords.slice(0, 8));
+      return;
+    }
+    const filtered = keywords.filter(k => k.includes(q)).slice(0, 8);
+    setSuggestions(filtered);
+  }, [searchQuery, keywords]);
+
+  // Close suggestions on outside click / Escape
+  const desktopSearchRef = useRef<HTMLDivElement | null>(null);
+  const mobileSearchRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        desktopSearchRef.current && !desktopSearchRef.current.contains(t) &&
+        mobileSearchRef.current && !mobileSearchRef.current.contains(t)
+      ) {
+        setSuggestionsOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSuggestionsOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, []);
+
   // Subscribe to featured offer config
   useEffect(() => {
     const unsub = SettingsService.subscribeFeaturedOffer((cfg) => setFeaturedOffer(cfg));
     return () => unsub();
   }, []);
+
 
   // Show error state if there's an error
   if (error) {
@@ -165,14 +231,7 @@ const Index = () => {
     return cart.reduce((total, item) => total + item.quantity, 0);
   };
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <Star
-        key={i}
-        className={`h-3 w-3 ${i < Math.floor(rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-      />
-    ));
-  };
+  
 
   const handleLogout = async () => {
     try {
@@ -212,14 +271,31 @@ const Index = () => {
             
             {/* Desktop Search Bar */}
             <div className="hidden md:flex flex-1 max-w-md mx-8">
-              <div className="relative w-full">
+              <div className="relative w-full" ref={desktopSearchRef}>
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search components..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  onChange={(e) => { setSearchQuery(e.target.value); setSuggestionsOpen(true); }}
                   className="pl-10"
                 />
+                {suggestionsOpen && suggestions.length > 0 && (
+                  <div className="absolute z-40 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                    <div className="p-2 grid grid-cols-2 gap-2">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s}
+                          className="text-left text-sm px-2 py-1 rounded hover:bg-accent"
+                          onClick={() => { setSearchQuery(s); setSuggestionsOpen(false); }}
+                          type="button"
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             
@@ -299,14 +375,31 @@ const Index = () => {
           
           {/* Mobile Search Bar and Theme Toggle */}
           <div className="md:hidden mt-4 space-y-2">
-            <div className="relative w-full">
+            <div className="relative w-full" ref={mobileSearchRef}>
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search components..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSuggestionsOpen(true)}
+                onChange={(e) => { setSearchQuery(e.target.value); setSuggestionsOpen(true); }}
                 className="pl-10"
               />
+              {suggestionsOpen && suggestions.length > 0 && (
+                <div className="absolute z-40 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md">
+                  <div className="p-2 grid grid-cols-2 gap-2">
+                    {suggestions.map((s) => (
+                      <button
+                        key={s}
+                        className="text-left text-sm px-2 py-1 rounded hover:bg-accent"
+                        onClick={() => { setSearchQuery(s); setSuggestionsOpen(false); }}
+                        type="button"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex justify-end">
               <Button
@@ -328,6 +421,21 @@ const Index = () => {
               </Button>
             </div>
           </div>
+          {/* Recommended keywords (chips) */}
+          {keywords.length > 0 && !searchQuery && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {keywords.slice(0, 10).map(k => (
+                <button
+                  key={k}
+                  type="button"
+                  className="text-xs px-2 py-1 rounded-full border hover:bg-accent"
+                  onClick={() => setSearchQuery(k)}
+                >
+                  {k}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 
@@ -335,12 +443,75 @@ const Index = () => {
       <section className="py-12 px-4">
         <div className="container mx-auto text-center">
           <div className="flex justify-center mb-6">
+            {/**
+             * Hero Ultron image retained for future reference.
+             * Re-enable by removing JSX comments below.
+             */}
+            {/**
             <img 
               src={theme === 'dark' ? "/ultron (5).png" : "/ultron (4).png"} 
               alt="Ultron Logo" 
               className="ultron-hero-mobile md:ultron-hero-desktop"
             />
+            */}
           </div>
+          {/* Featured Offer inside hero (above title) */}
+          {featuredOffer?.active && (
+            <div className="mb-8">
+              <Card className="inline-block text-left border-primary/30 bg-card">
+                <CardContent className="py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge className="bg-primary text-primary-foreground">Featured Offer</Badge>
+                      {featuredOffer.badgeText ? (
+                        <span className="text-xs text-muted-foreground">{featuredOffer.badgeText}</span>
+                      ) : null}
+                    </div>
+                    <CardTitle className="text-xl">{featuredOffer.title}</CardTitle>
+                    {featuredOffer.subtitle ? (
+                      <CardDescription className="mt-1">{featuredOffer.subtitle}</CardDescription>
+                    ) : null}
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="text-2xl font-bold text-primary">₹{featuredOffer.price}</span>
+                      {featuredOffer.originalPrice ? (
+                        <span className="text-sm text-muted-foreground line-through">₹{featuredOffer.originalPrice}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={async () => {
+                        let product = products.find(p => p.id === featuredOffer.productId);
+                        if (!product) {
+                          try {
+                            if (featuredOffer.productId && featuredOffer.productId !== 'products' && featuredOffer.productId.trim() !== '') {
+                              product = await ProductService.getProductById(featuredOffer.productId) as any;
+                            } else {
+                              return;
+                            }
+                          } catch (error) {
+                            return;
+                          }
+                        }
+                        if (product) {
+                          try {
+                            const cartItem = [{ ...product, quantity: 1 }];
+                            localStorage.setItem('vv_cart', JSON.stringify(cartItem));
+                            if (featuredOffer.promoCode) {
+                              localStorage.setItem('vv_promo', featuredOffer.promoCode);
+                            }
+                            navigate('/checkout');
+                          } catch {}
+                        }
+                      }}
+                    >
+                      <CreditCard className="h-4 w-4 mr-2" /> Get Offer
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
           <h2 className="text-4xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-primary/70 bg-clip-text text">
             Build Your Next Project
           </h2>
@@ -365,60 +536,54 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Featured Offer Banner (dynamic) */}
-      {featuredOffer?.active && (
-        <section className="px-4">
-          <div className="container mx-auto">
-            <Card className="border-primary/30 bg-card">
-              <CardContent className="py-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge className="bg-primary text-primary-foreground">Featured Offer</Badge>
-                    {featuredOffer.badgeText ? (
-                      <span className="text-xs text-muted-foreground">{featuredOffer.badgeText}</span>
-                    ) : null}
+      {/* Featured Offer Banner removed here; now shown above hero title */}
+
+      {/* Bulk Offer Flash Banner */}
+      <section className="py-8 px-4 bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border-y border-primary/20">
+        <div className="container mx-auto">
+          <Card className="border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10">
+            <CardContent className="py-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center">
+                    <Package className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">{featuredOffer.title}</CardTitle>
-                  {featuredOffer.subtitle ? (
-                    <CardDescription className="mt-1">{featuredOffer.subtitle}</CardDescription>
-                  ) : null}
-                  <div className="mt-3 flex items-center gap-3">
-                    <span className="text-2xl font-bold text-primary">₹{featuredOffer.price}</span>
-                    {featuredOffer.originalPrice ? (
-                      <span className="text-sm text-muted-foreground line-through">₹{featuredOffer.originalPrice}</span>
-                    ) : null}
+                  <div>
+                    <h3 className="text-xl font-bold text-primary">Bulk Order Special!</h3>
+                    <p className="text-muted-foreground">
+                      Get special pricing for bulk orders. Order 5-9 kits on website, 10+ kits via WhatsApp.
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
+                <div className="flex items-center gap-3">
+                  <Link to="/bulk-offer">
+                    <Button className="bg-primary hover:bg-primary/90">
+                      <Package className="h-4 w-4 mr-2" />
+                      View Bulk Offers
+                    </Button>
+                  </Link>
+                  <Button 
+                    variant="outline" 
                     onClick={() => {
-                      const product = products.find(p => p.id === featuredOffer.productId);
-                      if (product) {
-                        try {
-                          localStorage.setItem('vv_cart', JSON.stringify([{ ...product, quantity: 1 }]));
-                          if (featuredOffer.promoCode) {
-                            localStorage.setItem('vv_promo', featuredOffer.promoCode);
-                          }
-                        } catch {}
-                        navigate('/checkout');
-                      } else {
-                        toast({ title: 'Please wait', description: 'Loading the offer, try again in a moment.' });
-                      }
+                      const message = `Hi! I want to buy 10+ kits so what will be the pricing?`;
+                      const whatsappUrl = `https://wa.me/919156294374?text=${encodeURIComponent(message)}`;
+                      window.open(whatsappUrl, '_blank');
                     }}
                   >
-                    <CreditCard className="h-4 w-4 mr-2" /> Get Offer
+                    <MessageCircle className="h-4 w-4 mr-2" />
+                    WhatsApp
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-      )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
 
       <div className="container mx-auto px-4 pb-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Main Products Section */}
-          <div className="flex-1">
+          <div className="flex-1" data-products-section>
             {/* Filters and Controls */}
             <div className="mb-8 space-y-4">
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
@@ -490,12 +655,21 @@ const Index = () => {
                 {filteredProducts.map((product) => (
                   <Card key={product.id} className="group hover:shadow-xl transition-all duration-300 border-border/50 hover:border-primary/50 overflow-hidden cursor-pointer" onClick={() => openProductDialog(product)}>
                     <div className="relative">
-                      <div className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-t-lg flex items-center justify-center overflow-hidden">
+                      <div 
+                        className="aspect-video bg-gradient-to-br from-muted to-muted/50 rounded-t-lg flex items-center justify-center overflow-hidden cursor-pointer relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (product.image) {
+                            setSelectedImageForView({url: product.image, alt: product.name});
+                            setShowImageViewer(true);
+                          }
+                        }}
+                      >
                         {product.image ? (
                           <img 
                             src={product.image} 
                             alt={product.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover hover:scale-105 transition-transform"
                             onError={(e) => {
                               e.currentTarget.style.display = 'none';
                               e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -505,6 +679,13 @@ const Index = () => {
                         <div className={`text-muted-foreground text-sm ${product.image ? 'hidden' : ''}`}>
                           Product Image
                         </div>
+                        
+                        {/* Hover overlay for image zoom */}
+                        {product.image && (
+                          <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <ZoomIn className="h-6 w-6 text-white" />
+                          </div>
+                        )}
                       </div>
                       
                       {/* Badges */}
@@ -547,13 +728,7 @@ const Index = () => {
                       <CardDescription className="text-sm line-clamp-2">{product.description}</CardDescription>
                       <p className="text-xs text-muted-foreground">{product.category}</p>
                       
-                      {/* Rating */}
-                      <div className="flex items-center space-x-1 mt-2">
-                        {renderStars(product.rating)}
-                        <span className="text-xs text-muted-foreground ml-1">
-                          ({product.reviews})
-                        </span>
-                      </div>
+                      
                     </CardHeader>
                     
                     <CardContent>
@@ -810,12 +985,20 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Product Images */}
               <div className="space-y-4">
-                <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center overflow-hidden">
+                <div 
+                  className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center overflow-hidden cursor-pointer relative hover:shadow-lg transition-all"
+                  onClick={() => {
+                    if (selectedProduct.image) {
+                      setSelectedImageForView({url: selectedProduct.image, alt: selectedProduct.name});
+                      setShowImageViewer(true);
+                    }
+                  }}
+                >
                   {selectedProduct.image ? (
                     <img 
                       src={selectedProduct.image} 
                       alt={selectedProduct.name}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain hover:scale-105 transition-transform"
                       onError={(e) => {
                         e.currentTarget.style.display = 'none';
                         e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -825,17 +1008,31 @@ const Index = () => {
                   <div className={`text-muted-foreground text-lg ${selectedProduct.image ? 'hidden' : ''}`}>
                     Product Image
                   </div>
+                  
+                  {/* Hover overlay */}
+                  {selectedProduct.image && (
+                    <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <ZoomIn className="h-8 w-8 text-white" />
+                    </div>
+                  )}
                 </div>
                 
                 {/* Additional Images */}
                 {selectedProduct.images && selectedProduct.images.length > 0 && (
                   <div className="grid grid-cols-4 gap-2">
                     {selectedProduct.images.map((image, index) => (
-                      <div key={index} className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-md flex items-center justify-center overflow-hidden">
+                      <div 
+                        key={index} 
+                        className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-md flex items-center justify-center overflow-hidden cursor-pointer relative hover:shadow-lg transition-all"
+                        onClick={() => {
+                          setSelectedImageForView({url: image, alt: `${selectedProduct.name} ${index + 1}`});
+                          setShowImageViewer(true);
+                        }}
+                      >
                         <img 
                           src={image} 
                           alt={`${selectedProduct.name} ${index + 1}`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover hover:scale-105 transition-transform"
                           onError={(e) => {
                             e.currentTarget.style.display = 'none';
                             e.currentTarget.nextElementSibling?.classList.remove('hidden');
@@ -843,6 +1040,11 @@ const Index = () => {
                         />
                         <div className={`text-muted-foreground text-xs ${image ? 'hidden' : ''}`}>
                           Image {index + 1}
+                        </div>
+                        
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <ZoomIn className="h-6 w-6 text-white" />
                         </div>
                       </div>
                     ))}
@@ -867,13 +1069,7 @@ const Index = () => {
                   )}
                 </div>
 
-                {/* Rating */}
-                <div className="flex items-center space-x-2">
-                  {renderStars(selectedProduct.rating)}
-                  <span className="text-sm text-muted-foreground">
-                    ({selectedProduct.reviews} reviews)
-                  </span>
-                </div>
+                
 
                 {/* Description */}
                 <div>
@@ -954,6 +1150,29 @@ const Index = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Image Viewer Dialog */}
+      <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
+        <DialogContent className="max-w-5xl max-h-[95vh] p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="flex items-center gap-2">
+              <ZoomIn className="h-5 w-5" />
+              {selectedImageForView?.alt}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedImageForView && (
+            <div className="relative p-6 pt-4">
+              <img
+                src={selectedImageForView.url}
+                alt={selectedImageForView.alt}
+                className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

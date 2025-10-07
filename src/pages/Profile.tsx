@@ -93,22 +93,22 @@ const Profile = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'delivered': return 'bg-green-500';
-      case 'shipped': return 'bg-blue-500';
-      case 'processing': return 'bg-yellow-500';
-      case 'pending': return 'bg-gray-500';
-      case 'cancelled': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case 'delivered': return 'bg-green-100 text-green-800 border-green-200';
+      case 'shipped': return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'processing': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'pending': return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'cancelled': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
   const getPaymentStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-500';
-      case 'pending': return 'bg-yellow-500';
-      case 'failed': return 'bg-red-500';
-      case 'refunded': return 'bg-blue-500';
-      default: return 'bg-gray-500';
+      case 'completed': return 'bg-green-100 text-green-800 border-green-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'failed': return 'bg-red-100 text-red-800 border-red-200';
+      case 'refunded': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -347,23 +347,23 @@ const Profile = () => {
                     ) : (
                       <div className="space-y-4">
                         {orders.map((order) => (
-                          <div key={order.id} className="border rounded-lg p-4">
+                          <div key={order.id} className="border border-gray-200 bg-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
                             <div className="flex items-center justify-between mb-3">
                               <div>
-                                <h3 className="font-semibold">{order.id}</h3>
-                                <p className="text-sm text-muted-foreground">
+                                <h3 className="font-semibold text-gray-900">{order.id}</h3>
+                                <p className="text-sm text-gray-500">
                                   {order.createdAt.toLocaleDateString()}
                                 </p>
                               </div>
                               <div className="flex items-center space-x-2">
-                                <Badge className={getStatusColor(order.status)}>
+                                <Badge className={`${getStatusColor(order.status)} border`}>
                                   {getStatusIcon(order.status)}
-                                  <span className="ml-1">{order.status}</span>
+                                  <span className="ml-1 capitalize">{order.status}</span>
                                 </Badge>
-                                <Badge variant="outline" className={getPaymentStatusColor(order.paymentStatus)}>
+                                <Badge variant="outline" className={`${getPaymentStatusColor(order.paymentStatus)} border`}>
                                   {order.paymentStatus}
                                 </Badge>
-                                <span className="font-semibold">₹{order.total}</span>
+                                <span className="font-semibold text-gray-900">₹{order.total}</span>
                                 <Button size="sm" variant="outline" onClick={() => navigate(`/orders/${order.id}`)}>
                                   View details
                                 </Button>
@@ -371,15 +371,15 @@ const Profile = () => {
                             </div>
                             <div className="space-y-2">
                               {order.items.map((item, index) => (
-                                <div key={index} className="flex justify-between text-sm">
+                                <div key={index} className="flex justify-between text-sm text-gray-700">
                                   <span>{item.name} x{item.quantity}</span>
                                   <span>₹{(item.price * item.quantity).toFixed(0)}</span>
                                 </div>
                               ))}
                             </div>
                             {order.shippingAddress && (
-                              <div className="mt-3 pt-3 border-t text-sm text-muted-foreground">
-                                <p><strong>Ship to:</strong> {order.shippingAddress.name}</p>
+                              <div className="mt-3 pt-3 border-t border-gray-200 text-sm text-gray-600">
+                                <p><strong className="text-gray-900">Ship to:</strong> {order.shippingAddress.name}</p>
                                 <p>{order.shippingAddress.address}, {order.shippingAddress.city}</p>
                               </div>
                             )}

@@ -18,6 +18,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { PaymentService } from '@/services/paymentService';
 import { Order } from '@/types';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const PaymentSuccess = () => {
   const navigate = useNavigate();
@@ -38,40 +40,23 @@ const PaymentSuccess = () => {
       return;
     }
 
-    // Simulate fetching order details
+    // Fetch order from Firestore and reflect payment status
     const fetchOrder = async () => {
       try {
-        // In a real app, you would fetch the order from your backend
-        // For now, we'll simulate the order data
-        const mockOrder: Order = {
+        const ref = doc(db as any, 'orders', orderId);
+        const snap = await getDoc(ref);
+        if (!snap.exists()) throw new Error('Order not found');
+        const data = snap.data() as any;
+        const normalized: Order = {
           id: orderId,
-          userId: userProfile?.uid || '',
-          items: [], // This would be populated from the actual order
-          total: 0,
-          status: 'processing',
-          paymentStatus: 'completed',
-          paymentMethod: 'phonepe',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          shippingAddress: {
-            name: userProfile?.displayName || '',
-            phone: userProfile?.phone || '',
-            address: userProfile?.address?.street || '',
-            city: userProfile?.address?.city || '',
-            state: userProfile?.address?.state || '',
-            pincode: userProfile?.address?.pincode || '',
-          }
-        };
-        
-        setOrder(mockOrder);
-        
-        // Update order status to processing
-        await PaymentService.updateOrderStatus(orderId, 'processing', 'completed');
-        
-        toast({
-          title: "Payment Successful!",
-          description: "Your order has been placed successfully.",
-        });
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt || new Date()),
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt || new Date()),
+        } as Order;
+        setOrder(normalized);
+        if (normalized.paymentStatus !== 'completed') {
+          await PaymentService.updateOrderStatus(orderId, 'processing', normalized.paymentStatus || 'pending');
+        }
       } catch (error: any) {
         setError(error.message || 'Failed to process order');
         toast({
@@ -132,17 +117,17 @@ const PaymentSuccess = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-background to-green-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-background to-blue-50/30">
       <div className="container mx-auto p-6 max-w-2xl">
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center">
-              <CheckCircle className="h-8 w-8 text-white" />
+            <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
+              <Clock className="h-8 w-8 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-green-600 mb-2">Payment Successful!</h1>
-          <p className="text-muted-foreground">Your order details will be updated shortly. For support and status, join our community.</p>
+          <h1 className="text-3xl font-bold text-blue-600 mb-2">Payment Processing</h1>
+          <p className="text-muted-foreground">Your payment is processing and will be verified shortly. You will see your product shipped as status. For support and updates, join our community.</p>
           <div className="mt-3">
             <a href="https://chat.whatsapp.com/DTXpXQY5zvyIQRmcpUXGHP" target="_blank" rel="noreferrer">
               <Button variant="outline">Join our WhatsApp Community</Button>
@@ -150,16 +135,16 @@ const PaymentSuccess = () => {
           </div>
         </div>
 
-        {/* Success Card */}
-        <Card className="mb-6 border-green-200 bg-green-50/50">
+        {/* Processing Card */}
+        <Card className="mb-6 border-blue-200 bg-blue-50/50">
           <CardHeader>
             <div className="flex items-center justify-center space-x-2 mb-4">
               <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center">
                 <Phone className="h-6 w-6 text-white" />
               </div>
               <div>
-                <CardTitle className="text-green-800">PhonePe Payment</CardTitle>
-                <CardDescription className="text-green-600">Order #{order.id}</CardDescription>
+                <CardTitle className="text-blue-800">Razorpay Payment</CardTitle>
+                <CardDescription className="text-blue-600">Order #{order.id}</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -167,24 +152,30 @@ const PaymentSuccess = () => {
             {/* Payment Details */}
             <div className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-green-700">Order ID:</span>
-                <span className="font-mono text-sm text-green-800">{order.id}</span>
+                <span className="text-blue-700">Order ID:</span>
+                <span className="font-mono text-sm text-blue-800">{order.id}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-green-700">Payment Status:</span>
-                <Badge className="bg-green-600 text-white">Completed</Badge>
+                <span className="text-blue-700">Payment Status:</span>
+                <Badge className="bg-blue-600 text-white">{order.paymentStatus.toUpperCase()}</Badge>
               </div>
               <div className="flex justify-between">
-                <span className="text-green-700">Payment Method:</span>
-                <Badge variant="secondary">PhonePe</Badge>
+                <span className="text-blue-700">Payment Method:</span>
+                <Badge variant="secondary">{order.paymentMethod.toUpperCase()}</Badge>
               </div>
+              {order.transactionId && (
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Transaction ID:</span>
+                  <span className="font-mono text-xs text-blue-800">{order.transactionId}</span>
+                </div>
+              )}
             </div>
 
-            {/* Security Notice */}
-            <Alert className="border-green-200 bg-green-100">
-              <Shield className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                Your payment has been processed securely through PhonePe.
+            {/* Processing Notice */}
+            <Alert className="border-blue-200 bg-blue-100">
+              <Clock className="h-4 w-4 text-blue-600" />
+              <AlertDescription className="text-blue-800">
+                Your payment is being processed and will be verified shortly. You will see your product shipped as status once verified.
               </AlertDescription>
             </Alert>
           </CardContent>

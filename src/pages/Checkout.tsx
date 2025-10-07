@@ -15,7 +15,9 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Plus,
+  Minus
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -34,13 +36,18 @@ const Checkout = () => {
   const [error, setError] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
+  const [payMode, setPayMode] = useState<'full' | 'half'>('full');
+  const [currentPromo, setCurrentPromo] = useState<{ paymentOptions: 'full' | 'partial' | 'both' } | null>(null);
   
   // Form state
   const [studentData, setStudentData] = useState({
     name: userProfile?.displayName || '',
     branchDiv: '',
+    branch: '' as string,
+    collegeName: '' as string,
+    college: '' as string,
     phone: userProfile?.phone || '',
-    campus: '' as '' | 'Bibwewadi' | 'Kondhwa',
+    campus: '' as string,
   });
 
   // Load cart items dynamically from localStorage (populated by product pages)
@@ -65,20 +72,47 @@ const Checkout = () => {
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const shipping = 0; // Shipping disabled for now
   const total = Math.max(0, subtotal + shipping - discount);
+  const canPartialPay = cartItems.length > 0 && cartItems.every(i => !!i.allowPartialPayment);
+  const halfNow = Math.floor(total / 2);
+  const dueLater = Math.max(0, total - halfNow);
+  
+  // Check if promo code restricts payment options
+  const isPromoFullPaymentOnly = currentPromo?.paymentOptions === 'full';
+  const showPartialPaymentOption = canPartialPay && !isPromoFullPaymentOnly;
+
+  const updateCartQuantity = (id: string, quantity: number) => {
+    if (quantity <= 0) {
+      const updatedCart = cartItems.filter(item => item.id !== id);
+      setCartItems(updatedCart);
+      try { localStorage.setItem('vv_cart', JSON.stringify(updatedCart)); } catch {}
+      return;
+    }
+    
+    const updatedCart = cartItems.map(item => 
+      item.id === id ? { ...item, quantity } : item
+    );
+    setCartItems(updatedCart);
+    try { localStorage.setItem('vv_cart', JSON.stringify(updatedCart)); } catch {}
+  };
 
   const computeDiscount = async (items: CartItem[], codeRaw: string) => {
     const code = (codeRaw || '').trim().toUpperCase();
     if (!code) {
       setDiscount(0);
+      setCurrentPromo(null);
       return 0;
     }
     
     try {
       const promo = await PromoService.findByCode(code);
       if (!promo) { 
-        setDiscount(0); 
+        setDiscount(0);
+        setCurrentPromo(null);
         return 0; 
       }
+      
+      // Store promo payment options
+      setCurrentPromo({ paymentOptions: promo.paymentOptions });
       
       const applicableSet = new Set(promo.productIds || []);
       const applicableTotal = (promo.productIds && promo.productIds.length > 0)
@@ -91,6 +125,7 @@ const Checkout = () => {
     } catch (error) {
       console.error('Error computing discount:', error);
       setDiscount(0);
+      setCurrentPromo(null);
       return 0;
     }
   };
@@ -99,15 +134,38 @@ const Checkout = () => {
     computeDiscount(cartItems, promoCode);
   }, [cartItems, promoCode]);
 
+  // Auto-set payment mode to 'full' when promo requires full payment only
+  useEffect(() => {
+    if (isPromoFullPaymentOnly && payMode === 'half') {
+      setPayMode('full');
+    }
+  }, [isPromoFullPaymentOnly, payMode]);
+
 
   const validateForm = () => {
     if (cartItems.length === 0) return 'Cart is empty';
     if (!studentData.name.trim()) return 'Student name is required';
-    if (!studentData.branchDiv.trim()) return 'Branch/Div is required';
+    if (studentData.college === 'Other') {
+      if (!studentData.collegeName.trim()) return 'College name is required';
+    } else if (!studentData.college) {
+      return 'Please select a college';
+    }
+    if (!studentData.branch.trim()) return 'Branch is required';
+    if (!studentData.branchDiv.trim()) return 'Division is required';
     if (!studentData.phone.trim()) return 'Student phone is required';
-    if (!studentData.campus) return 'Select a campus';
+    if ((studentData.college === 'VIT Pune' || studentData.college === 'BITS' || studentData.college === 'BIT Mesra') && !studentData.campus) return 'Select a campus';
     return null;
   };
+
+  const loadRazorpayScript = () => new Promise<boolean>((resolve) => {
+    const existing = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existing) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
 
   const handleProceedToPay = async () => {
     const validationError = validateForm();
@@ -137,7 +195,7 @@ const Checkout = () => {
         total: finalTotal,
         status: 'pending',
         paymentStatus: 'pending',
-        paymentMethod: 'phonepe',
+        paymentMethod: 'razorpay',
         discount: finalDiscount,
         shippingAddress: {
           name: studentData.name,
@@ -154,22 +212,76 @@ const Checkout = () => {
         orderBase.promoCode = promoCode.trim().toUpperCase();
       }
 
+      const chargeAmount = (canPartialPay && payMode === 'half') ? Math.max(0, Math.floor(finalTotal / 2)) : finalTotal;
+
       const orderData = {
         ...orderBase,
         student: {
           name: studentData.name,
           branchDiv: studentData.branchDiv,
+          branch: studentData.branch,
+          collegeName: studentData.college === 'Other' ? studentData.collegeName : studentData.college,
+          college: studentData.college || (studentData.collegeName ? 'Other' : ''),
           phone: studentData.phone,
           campus: studentData.campus,
-        }
+        },
+        ...(canPartialPay && payMode === 'half' ? {
+          partialPayment: {
+            enabled: true,
+            paidNow: chargeAmount,
+            dueOnDelivery: Math.max(0, finalTotal - chargeAmount),
+          }
+        } : {})
       } as any;
 
       const orderId = await PaymentService.createOrder(orderData);
-      // Clear cart storage now that an order exists
-      try { localStorage.removeItem('vv_cart'); } catch {}
-      
-      // Navigate to simple QR payments page
-      navigate(`/payments-qr?orderId=${encodeURIComponent(orderId)}&amount=${encodeURIComponent(finalTotal.toFixed(0))}`);
+      // Create Razorpay order on server
+      const { order, key } = await PaymentService.createRazorpayOrder(orderId, chargeAmount);
+
+      // Load Razorpay SDK
+      const ok = await loadRazorpayScript();
+      if (!ok) throw new Error('Failed to load Razorpay');
+
+      const options: any = {
+        key,
+        amount: order.amount,
+        currency: order.currency,
+        name: 'Volta Vista Shop',
+        description: `Order ${orderId}`,
+        order_id: order.id,
+        notes: { orderId },
+        handler: async function (response: any) {
+          let verifiedOk = false;
+          try {
+            const verify = await PaymentService.verifyRazorpaySignature({
+              orderId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+            verifiedOk = !!verify.verified;
+          } catch (e: any) {
+            // swallow to ensure redirect
+          } finally {
+            try { localStorage.removeItem('vv_cart'); } catch {}
+            navigate(`/payment/success?orderId=${encodeURIComponent(orderId)}`);
+          }
+        },
+        theme: { color: '#7c3aed' },
+        modal: {
+          ondismiss: function () {
+            setError('Payment cancelled');
+          }
+        },
+        prefill: {
+          name: studentData.name,
+          contact: studentData.phone,
+        }
+      };
+
+      // @ts-ignore
+      const rzp = new window.Razorpay(options);
+      rzp.open();
 
     } catch (error: any) {
       setError(error.message || 'Failed to process payment');
@@ -223,12 +335,32 @@ const Checkout = () => {
                       </div>
                       <div>
                         <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
+                        <p className="text-sm text-muted-foreground">₹{item.price} each</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">₹{(item.price * item.quantity).toFixed(0)}</p>
-                      <p className="text-sm text-muted-foreground">₹{item.price} each</p>
+                    <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
+                        <Button 
+                          size="icon" 
+                          variant="outline" 
+                          className="h-8 w-8" 
+                          onClick={() => updateCartQuantity(item.id, item.quantity - 1)}
+                        >
+                          <Minus className="h-3 w-3" />
+                        </Button>
+                        <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                        <Button 
+                          size="icon" 
+                          variant="outline" 
+                          className="h-8 w-8" 
+                          onClick={() => updateCartQuantity(item.id, item.quantity + 1)}
+                        >
+                          <Plus className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <div className="text-right min-w-[80px]">
+                        <p className="font-medium">₹{(item.price * item.quantity).toFixed(0)}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -250,28 +382,47 @@ const Checkout = () => {
               </CardContent>
             </Card>
 
-            {/* Payment Method */}
+            {/* Payment Options */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <CreditCard className="h-5 w-5" />
-                  <span>Payment Method</span>
+                  <span>Payment Options</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center space-x-3 p-4 border rounded-lg bg-primary/5">
-                  <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">P</span>
+                {showPartialPaymentOption && (
+                  <div className="mb-4">
+                    <Label className="mb-2 block">Choose how to pay</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant={payMode === 'full' ? 'default' : 'outline'}
+                        onClick={() => setPayMode('full')}
+                      >
+                        Pay Full ₹{total.toFixed(0)}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant={payMode === 'half' ? 'default' : 'outline'}
+                        onClick={() => setPayMode('half')}
+                      >
+                        Pay 50% Now ₹{halfNow.toFixed(0)} (Due ₹{dueLater.toFixed(0)})
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">PhonePe</p>
-                    <p className="text-sm text-muted-foreground">Pay securely with PhonePe</p>
+                )}
+                
+                {isPromoFullPaymentOnly && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>Note:</strong> This promo code requires full payment only. Partial payment option is not available.
+                    </p>
                   </div>
-                  <Badge variant="secondary" className="ml-auto">Recommended</Badge>
-                </div>
+                )}
 
                 {/* Promo Code */}
-                <div className="mt-4 space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="promo">Promo Code</Label>
                   <div className="flex gap-2">
                     <Input id="promo" value={promoCode} onChange={(e) => {
@@ -312,15 +463,129 @@ const Checkout = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="sbranch">Branch / Div</Label>
-                      <Input id="sbranch" value={studentData.branchDiv} onChange={(e) => setStudentData(prev => ({ ...prev, branchDiv: e.target.value }))} placeholder="e.g. E&TC Div B" />
+                      <Label htmlFor="collegeSelect">College</Label>
+                      <select id="collegeSelect" className="border rounded-md h-10 px-3 text-black" value={studentData.college} onChange={(e) => setStudentData(prev => ({ ...prev, college: e.target.value as any, campus: '', branch: '' }))}>
+                        <option value="Other">Other</option>
+                        <option value="VIT Pune">VIT Pune</option>
+                        <option value="K. K. Wagh College of Engineering Nashik">K. K. Wagh College of Engineering Nashik</option>
+                        <option value="Sandip UniversityNashik">Sandip University Nashik</option>
+                        <option value="VIT Vellore">VIT Vellore</option>
+                        <option value="BITS">BITS (Birla Institute of Technology & Science)</option>
+                        <option value="BIT Mesra">BIT Mesra (Birla Institute of Technology)</option>
+                        <option value="COEP">COEP</option>
+                        <option value="PICT">PICT</option>
+                        <option value="VJTI">VJTI</option>
+                        <option value="SPPU">SPPU</option>
+                        <option value="Sinhgad">Sinhgad College of Engineering</option>
+                        <option value="AIT Pune">AIT Pune</option>
+                        <option value="MIT WPU">MIT WPU</option>
+                        <option value="DY Patil Pune">DY Patil COE Pune</option>
+                        <option value="PCCOE">PCCOE</option>
+                        <option value="BVDU">BVDU</option>
+                        <option value="KJ Somaiya">KJ Somaiya COE</option>
+                        <option value="DJ Sanghvi">DJ Sanghvi COE</option>
+                        <option value="VIT Mumbai">VIT Mumbai</option>
+                        <option value="Sandip University Nashik">Sandip University Nashik</option>
+                      </select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="scampus" className="text-black">Campus</Label>
-                      <select id="scampus" className="border rounded-md h-10 px-3 text-black" value={studentData.campus} onChange={(e) => setStudentData(prev => ({ ...prev, campus: e.target.value as any }))}>
-                        <option value="">Select campus</option>
-                        <option value="Bibwewadi">Bibwewadi</option>
-                        <option value="Kondhwa">Kondhwa</option>
+                      <Label htmlFor="college">College Name</Label>
+                      <Input id="college" value={studentData.collegeName} onChange={(e) => setStudentData(prev => ({ ...prev, collegeName: e.target.value }))} placeholder="Enter college name (required for 'Other')" disabled={studentData.college !== 'Other'} />
+                    </div>
+                  </div>
+                  {studentData.college === 'VIT Pune' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="scampus" className="text-black">Campus</Label>
+                        <select id="scampus" className="border rounded-md h-10 px-3 text-black" value={studentData.campus} onChange={(e) => setStudentData(prev => ({ ...prev, campus: e.target.value as any, branch: '' }))}>
+                          <option value="">Select campus</option>
+                          <option value="Bibwewadi">Bibwewadi</option>
+                          <option value="Kondhwa">Kondhwa</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  {studentData.college === 'BITS' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="scampus" className="text-black">Campus</Label>
+                        <select id="scampus" className="border rounded-md h-10 px-3 text-black" value={studentData.campus} onChange={(e) => setStudentData(prev => ({ ...prev, campus: e.target.value as any, branch: '' }))}>
+                          <option value="">Select campus</option>
+                          <option value="Pilani">Pilani</option>
+                          <option value="Goa">Goa</option>
+                          <option value="Hyderabad">Hyderabad</option>
+                          <option value="Dubai">Dubai</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  {studentData.college === 'BIT Mesra' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="scampus" className="text-black">Campus</Label>
+                        <select id="scampus" className="border rounded-md h-10 px-3 text-black" value={studentData.campus} onChange={(e) => setStudentData(prev => ({ ...prev, campus: e.target.value as any, branch: '' }))}>
+                          <option value="">Select campus</option>
+                          <option value="Mesra">Mesra</option>
+                          <option value="Patna">Patna</option>
+                          <option value="Deoghar">Deoghar</option>
+                          <option value="Jaipur">Jaipur</option>
+                          <option value="Noida">Noida</option>
+                          <option value="Lalpur">Lalpur (Ranchi)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="branch">Branch</Label>
+                      <select id="branch" className="border rounded-md h-10 px-3 text-black" value={studentData.branch} onChange={(e) => setStudentData(prev => ({ ...prev, branch: e.target.value }))} disabled={studentData.college === 'VIT Pune' ? !studentData.campus : false}>
+                        <option value="">Select branch</option>
+                        {studentData.college === 'VIT Pune' && studentData.campus === 'Kondhwa' && (
+                          <>
+                            <option value="ENTC">ENTC</option>
+                            <option value="Mech">Mech</option>
+                            <option value="DS">DS</option>
+                            <option value="SE">SE</option>
+                            <option value="IoT">IoT</option>
+                            <option value="Civil">Civil</option>
+                          </>
+                        )}
+                        {studentData.college === 'VIT Pune' && studentData.campus === 'Bibwewadi' && (
+                          <>
+                            <option value="Computer Engineering">Computer Engineering</option>
+                            <option value="IT">IT</option>
+                            <option value="AIML">AIML</option>
+                            <option value="AI">AI</option>
+                            <option value="AIDS">AIDS</option>
+                          </>
+                        )}
+                        {studentData.college !== 'VIT Pune' && (
+                          <>
+                            <option value="Computer Engineering">Computer Engineering</option>
+                            <option value="IT">IT</option>
+                            <option value="ENTC">ENTC</option>
+                            <option value="Mechanical">Mechanical</option>
+                            <option value="Civil">Civil</option>
+                            <option value="AIML">AIML</option>
+                            <option value="AI">AI</option>
+                            <option value="AIDS">AIDS</option>
+                            <option value="IoT">IoT</option>
+                            <option value="Data Science">Data Science</option>
+                            <option value="Software Engineering">Software Engineering</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="division">Division</Label>
+                      <select id="division" className="border rounded-md h-10 px-3 text-black" value={studentData.branchDiv} onChange={(e) => setStudentData(prev => ({ ...prev, branchDiv: e.target.value }))}>
+                        <option value="">Select division</option>
+                        {Array.from({ length: 12 }).map((_, idx) => {
+                          const c = String.fromCharCode('A'.charCodeAt(0) + idx);
+                          return (
+                            <option key={c} value={`Div ${c}`}>{`Div ${c}`}</option>
+                          );
+                        })}
                       </select>
                     </div>
                   </div>
@@ -352,12 +617,14 @@ const Checkout = () => {
                   ) : (
                     <>
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Proceed to Pay ₹{total.toFixed(0)}
+                      {canPartialPay && payMode === 'half' 
+                        ? `Pay Now ₹${halfNow.toFixed(0)} (Due ₹${dueLater.toFixed(0)})`
+                        : `Proceed to Pay ₹${total.toFixed(0)}`}
                     </>
                   )}
                 </Button>
                 <p className="text-xs text-muted-foreground text-center mt-2">
-                  You will be redirected to PhonePe for secure payment
+                  Secure payment powered by Razorpay
                 </p>
               </CardContent>
             </Card>

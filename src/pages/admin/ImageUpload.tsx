@@ -1,15 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/AuthContext';
-import { Upload, Copy, Check, X, Image as ImageIcon, Link, Download } from "lucide-react";
+import { Upload, Image as ImageIcon, Link, Download, FileImage, Plus, ZoomIn } from "lucide-react";
 import { storage } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, listAll } from 'firebase/storage';
 
 interface UploadedImage {
   id: string;
@@ -25,14 +26,78 @@ const ImageUpload = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [uploading, setUploading] = useState(false);
-  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
-  const [selectedImage, setSelectedImage] = useState<UploadedImage | null>(null);
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);    
+  const [selectedImage, setSelectedImage] = useState<UploadedImage | null>(null);                                                                               
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dragCounter, setDragCounter] = useState(0);
+  const [previewFiles, setPreviewFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [selectedImageForView, setSelectedImageForView] = useState<UploadedImage | null>(null);
+  const [allUploadedImages, setAllUploadedImages] = useState<UploadedImage[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
 
   // Debug logging
   console.log('ImageUpload - currentUser:', currentUser?.email);
   console.log('ImageUpload - userProfile:', userProfile);
   console.log('ImageUpload - role:', userProfile?.role);
+
+  // Keyboard shortcut for file selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        fileInputRef.current?.click();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Load all uploaded images from Firebase Storage
+  const loadAllUploadedImages = async () => {
+    if (!storage) return;
+    
+    setLoadingImages(true);
+    try {
+      const listRef = ref(storage, 'product-images');
+      const result = await listAll(listRef);
+      
+      const imagePromises = result.items.map(async (itemRef) => {
+        try {
+          const url = await getDownloadURL(itemRef);
+          return {
+            id: itemRef.name,
+            name: itemRef.name,
+            url: url,
+            size: 0, // Size not available from listAll
+            uploadedAt: new Date() // Date not available from listAll
+          };
+        } catch (error) {
+          console.error('Error getting download URL for', itemRef.name, error);
+          return null;
+        }
+      });
+
+      const images = (await Promise.all(imagePromises)).filter(Boolean) as UploadedImage[];
+      setAllUploadedImages(images);
+    } catch (error) {
+      console.error('Error loading images:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load uploaded images",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingImages(false);
+    }
+  };
+
+  // Load images on component mount
+  useEffect(() => {
+    loadAllUploadedImages();
+  }, []);
 
   // Check if user is admin or superadmin
   if (!currentUser || (userProfile?.role !== 'admin' && userProfile?.role !== 'superadmin')) {
@@ -50,18 +115,69 @@ const ImageUpload = () => {
     );
   }
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {    
     const files = event.target.files;
     if (files && files.length > 0) {
       handleUpload(Array.from(files));
     }
   };
 
+  // Drag and drop handlers
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev + 1);
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragCounter(prev => prev - 1);
+    if (dragCounter === 1) {
+      setIsDragOver(false);
+    }
+  }, [dragCounter]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    setDragCounter(0);
+
+    const files = Array.from(e.dataTransfer.files);
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length > 0) {
+      // Show preview before uploading
+      setPreviewFiles(imageFiles);
+      // Auto-upload after showing preview
+      setTimeout(() => {
+        handleUpload(imageFiles);
+        setPreviewFiles([]);
+      }, 1000);
+    } else {
+      toast({
+        title: "Invalid Files",
+        description: "Please drop only image files (JPG, PNG, GIF, WebP)",
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
   const handleUpload = async (files: File[]) => {
     setUploading(true);
+    setUploadProgress({});
     
     try {
-      const uploadPromises = files.map(async (file) => {
+      const uploadPromises = files.map(async (file, index) => {
         // Validate file type
         if (!file.type.startsWith('image/')) {
           throw new Error(`${file.name} is not an image file`);
@@ -69,17 +185,23 @@ const ImageUpload = () => {
 
         // Validate file size (max 5MB)
         if (file.size > 5 * 1024 * 1024) {
-          throw new Error(`${file.name} is too large. Maximum size is 5MB`);
+          throw new Error(`${file.name} is too large. Maximum size is 5MB`);    
         }
 
         // Create a unique filename
-        const timestamp = Date.now();
+        const timestamp = Date.now() + index;
         const fileName = `${timestamp}_${file.name}`;
         const storageRef = ref(storage, `product-images/${fileName}`);
+
+        // Update progress
+        setUploadProgress(prev => ({ ...prev, [file.name]: 0 }));
 
         // Upload file
         const snapshot = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(snapshot.ref);
+
+        // Update progress to 100%
+        setUploadProgress(prev => ({ ...prev, [file.name]: 100 }));
 
         return {
           id: timestamp.toString(),
@@ -93,6 +215,9 @@ const ImageUpload = () => {
       const uploadedFiles = await Promise.all(uploadPromises);
       setUploadedImages(prev => [...uploadedFiles, ...prev]);
       
+      // Reload all images to include the new uploads
+      loadAllUploadedImages();
+
       toast({
         title: "Upload Successful",
         description: `${files.length} image(s) uploaded successfully`,
@@ -102,36 +227,18 @@ const ImageUpload = () => {
       console.error('Upload error:', error);
       toast({
         title: "Upload Failed",
-        description: error instanceof Error ? error.message : "Failed to upload images",
+        description: error instanceof Error ? error.message : "Failed to upload images",                                                                        
         variant: "destructive"
       });
     } finally {
       setUploading(false);
+      setUploadProgress({});
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
 
-  const copyToClipboard = async (url: string) => {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopiedUrl(url);
-      toast({
-        title: "Copied to Clipboard",
-        description: "Image URL copied successfully",
-      });
-      
-      // Reset copied state after 2 seconds
-      setTimeout(() => setCopiedUrl(null), 2000);
-    } catch (error) {
-      toast({
-        title: "Copy Failed",
-        description: "Failed to copy URL to clipboard",
-        variant: "destructive"
-      });
-    }
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -166,99 +273,137 @@ const ImageUpload = () => {
                 Upload Images
               </CardTitle>
               <CardDescription>
-                Select multiple images to upload. Supported formats: JPG, PNG, GIF, WebP. Max size: 5MB per image.
+                Drag and drop images here or click to select. Supported formats: JPG, PNG, GIF, WebP. Max size: 5MB per image.                                              
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="image-upload" className="sr-only">
-                    Choose images
-                  </Label>
+                {/* Drag and Drop Zone */}
+                <div
+                  className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+                    isDragOver
+                      ? 'border-primary bg-primary/5 scale-105'
+                      : 'border-muted-foreground/25 hover:border-primary/50 hover:bg-muted/50'
+                  }`}
+                  onDragEnter={handleDragEnter}
+                  onDragLeave={handleDragLeave}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                >
+                  <div className="flex flex-col items-center gap-4">
+                    {isDragOver ? (
+                      <>
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Plus className="h-8 w-8 text-primary animate-pulse" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-medium text-primary">Drop images here!</p>
+                          <p className="text-sm text-muted-foreground">Release to upload</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                          <FileImage className="h-8 w-8 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-medium">Drag & drop images here</p>
+                          <p className="text-sm text-muted-foreground">or click to browse files</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Hidden file input */}
                   <Input
-                    id="image-upload"
                     type="file"
                     multiple
                     accept="image/*"
                     onChange={handleFileSelect}
                     ref={fileInputRef}
-                    className="cursor-pointer"
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   />
                 </div>
-                
-                <div className="flex items-center gap-2">
+
+                <div className="flex items-center justify-center gap-4">
                   <Button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={uploading}
                     className="flex items-center gap-2"
+                    variant="outline"
                   >
                     <Upload className="h-4 w-4" />
-                    {uploading ? 'Uploading...' : 'Choose Images'}
+                    {uploading ? 'Uploading...' : 'Browse Files'}
                   </Button>
-                  
+
                   {uploading && (
-                    <Badge variant="secondary" className="animate-pulse">
+                    <Badge variant="secondary" className="animate-pulse">       
                       Uploading...
                     </Badge>
                   )}
+                </div>
+
+                {/* Upload Progress */}
+                {uploading && (
+                  <div className="text-center">
+                    <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+                      <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                      Processing images...
+                    </div>
+                  </div>
+                )}
+
+                {/* Drag and Drop Tips */}
+                <div className="text-center text-xs text-muted-foreground space-y-1">
+                  <p>💡 <strong>Tip:</strong> You can drag multiple images at once for bulk upload</p>
+                  <p>⌨️ <strong>Shortcut:</strong> Press Ctrl+O (or Cmd+O on Mac) to open file browser</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Uploaded Images Grid */}
-          {uploadedImages.length > 0 && (
-            <Card>
+          {/* Preview Section */}
+          {previewFiles.length > 0 && (
+            <Card className="mb-8">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  Uploaded Images ({uploadedImages.length})
+                  <FileImage className="h-5 w-5" />
+                  Preview ({previewFiles.length} files)
                 </CardTitle>
                 <CardDescription>
-                  Click on any image to view details and copy its URL
+                  Files ready for upload
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                  {uploadedImages.map((image) => (
-                    <div
-                      key={image.id}
-                      className={`relative group cursor-pointer border rounded-lg overflow-hidden transition-all hover:shadow-lg ${
-                        selectedImage?.id === image.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'
-                      }`}
-                      onClick={() => setSelectedImage(image)}
-                    >
-                      <div className="aspect-square bg-muted flex items-center justify-center">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                  {previewFiles.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-square bg-muted rounded-lg overflow-hidden">
                         <img
-                          src={image.url}
-                          alt={image.name}
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
                           className="w-full h-full object-cover"
                         />
                       </div>
-                      
                       <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(image.url);
-                          }}
-                          className="flex items-center gap-2"
-                        >
-                          {copiedUrl === image.url ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
-                          {copiedUrl === image.url ? 'Copied!' : 'Copy URL'}
-                        </Button>
+                        <div className="text-center text-white">
+                          <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                          <p className="text-xs">Uploading...</p>
+                        </div>
                       </div>
-                      
+                      {/* Progress bar */}
+                      {uploadProgress[file.name] !== undefined && (
+                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/20">
+                          <div 
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{ width: `${uploadProgress[file.name]}%` }}
+                          ></div>
+                        </div>
+                      )}
                       <div className="p-2 bg-background">
-                        <p className="text-sm font-medium truncate">{image.name}</p>
+                        <p className="text-xs font-medium truncate">{file.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatFileSize(image.size)} • {formatDate(image.uploadedAt)}
+                          {formatFileSize(file.size)}
                         </p>
                       </div>
                     </div>
@@ -268,92 +413,119 @@ const ImageUpload = () => {
             </Card>
           )}
 
-          {/* Image Details Modal */}
-          {selectedImage && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                <CardHeader className="flex flex-row items-center justify-between">
+          {/* All Uploaded Images Gallery */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
                   <CardTitle className="flex items-center gap-2">
                     <ImageIcon className="h-5 w-5" />
-                    Image Details
+                    All Uploaded Images ({allUploadedImages.length})
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setSelectedImage(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="aspect-video bg-muted rounded-lg overflow-hidden">
-                    <img
-                      src={selectedImage.url}
-                      alt={selectedImage.name}
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div>
-                      <Label className="text-sm font-medium">File Name</Label>
-                      <p className="text-sm text-muted-foreground">{selectedImage.name}</p>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">File Size</Label>
-                      <p className="text-sm text-muted-foreground">{formatFileSize(selectedImage.size)}</p>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">Uploaded At</Label>
-                      <p className="text-sm text-muted-foreground">{formatDate(selectedImage.uploadedAt)}</p>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium">Image URL</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Textarea
-                          value={selectedImage.url}
-                          readOnly
-                          className="flex-1 min-h-[60px] text-xs font-mono"
+                  <CardDescription>
+                    Click on any image to view full size and copy its URL
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadAllUploadedImages}
+                  disabled={loadingImages}
+                >
+                  {loadingImages ? 'Loading...' : 'Refresh'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingImages ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                  <span className="ml-2 text-muted-foreground">Loading images...</span>
+                </div>
+              ) : allUploadedImages.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">                                                           
+                  {allUploadedImages.map((image) => (
+                    <div
+                      key={image.id}
+                      className={`relative group cursor-pointer border rounded-lg overflow-hidden transition-all hover:shadow-lg ${                             
+                        selectedImage?.id === image.id ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-primary/50'                                           
+                      }`}
+                      onClick={() => {
+                        setSelectedImage(image);
+                        setSelectedImageForView(image);
+                        setShowImageViewer(true);
+                      }}
+                    >
+                      <div className="aspect-square bg-muted flex items-center justify-center">                                                                 
+                        <img
+                          src={image.url}
+                          alt={image.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                          }}
                         />
+                        <div className="hidden text-muted-foreground text-xs text-center p-2">
+                          {image.name}
+                        </div>
+                      </div>
+
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">      
                         <Button
                           size="sm"
-                          onClick={() => copyToClipboard(selectedImage.url)}
-                          className="flex items-center gap-2"
+                          variant="secondary"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedImageForView(image);
+                            setShowImageViewer(true);
+                          }}
+                          className="flex items-center gap-1"
                         >
-                          {copiedUrl === selectedImage.url ? (
-                            <Check className="h-4 w-4" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
-                          )}
+                          <ZoomIn className="h-3 w-3" />
                         </Button>
                       </div>
+
+                      <div className="p-2 bg-background">
+                        <p className="text-xs font-medium truncate">{image.name}</p>                                                                            
+                        <p className="text-xs text-muted-foreground">
+                          {formatDate(image.uploadedAt)}                                                                       
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button
-                      onClick={() => copyToClipboard(selectedImage.url)}
-                      className="flex items-center gap-2"
-                    >
-                      <Copy className="h-4 w-4" />
-                      Copy URL
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => window.open(selectedImage.url, '_blank')}
-                      className="flex items-center gap-2"
-                    >
-                      <Link className="h-4 w-4" />
-                      Open in New Tab
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No images uploaded yet</h3>
+                  <p className="text-muted-foreground">Upload your first image using the drag & drop area above</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Image Viewer Dialog */}
+          <Dialog open={showImageViewer} onOpenChange={setShowImageViewer}>
+            <DialogContent className="max-w-5xl max-h-[95vh] p-0">
+              <DialogHeader className="p-6 pb-0">
+                <DialogTitle className="flex items-center gap-2">
+                  <ImageIcon className="h-5 w-5" />
+                  {selectedImageForView?.name}
+                </DialogTitle>
+              </DialogHeader>
+              
+              {selectedImageForView && (
+                <div className="relative p-6 pt-4">
+                  <img
+                    src={selectedImageForView.url}
+                    alt={selectedImageForView.name}
+                    className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
+                  />
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
     </div>

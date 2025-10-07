@@ -4,17 +4,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import { 
-  Users, 
-  ShoppingCart, 
-  DollarSign, 
-  Package, 
+import {
+  Users,
+  ShoppingCart,
+  DollarSign,
+  Package,
   RefreshCw,
   TrendingUp,
   Eye,
   Download,
   Image,
-  Settings
+  Settings,
+  UserCheck
 } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -23,43 +24,73 @@ import { useToast } from '@/hooks/use-toast';
 // import app from '@/lib/firebase';
 import { PaymentService } from '@/services/paymentService';
 import { ProductService } from '@/services/productService';
+import { UserService } from '@/services/userService';
 import { Order } from '@/types';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { Link } from 'react-router-dom';
 
 interface DashboardStats {
-  // totalUsers: number; // Disabled for Spark plan compatibility
+  totalUsers: number;
   totalOrders: number;
   totalRevenue: number;
   totalProducts: number;
   monthlyGrowth: number;
   averageOrderValue: number;
+  activeUsers: number;
+  newUsersThisMonth: number;
 }
 
 const Dashboard = () => {
   const { userProfile } = useAuth();
   const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats>({
-    // totalUsers: 0, // Disabled for Spark plan compatibility
+    totalUsers: 0,
     totalOrders: 0,
     totalRevenue: 0,
     totalProducts: 0,
     monthlyGrowth: 0,
-    averageOrderValue: 0
+    averageOrderValue: 0,
+    activeUsers: 0,
+    newUsersThisMonth: 0
   });
   const [loading, setLoading] = useState(true);
   // subscribe realtime
   const [orders, setOrders] = useState<Order[]>([]);
   useEffect(() => {
+    console.log('Dashboard: Setting up data subscriptions...');
+    
     const unsubProducts = ProductService.subscribeProducts((items) => {
+      console.log('Dashboard: Received products:', items.length);
       setStats(prev => ({ ...prev, totalProducts: items.length }));
     });
+    
     const unsubOrders = PaymentService.subscribeAllOrders((os) => {
+      console.log('Dashboard: Received orders:', os.length);
       setOrders(os);
       const totalRevenue = os.reduce((s, o) => s + (o.total || 0), 0);
-      setStats(prev => ({ ...prev, totalOrders: os.length, totalRevenue }));
+      const averageOrderValue = os.length > 0 ? totalRevenue / os.length : 0;
+      setStats(prev => ({ ...prev, totalOrders: os.length, totalRevenue, averageOrderValue }));    
     });
-    return () => { unsubProducts(); unsubOrders(); };
+    
+    // Load user statistics
+    console.log('Dashboard: Loading user stats...');
+    UserService.getUserStats().then((userStats) => {
+      console.log('Dashboard: Received user stats:', userStats);
+      setStats(prev => ({ 
+        ...prev, 
+        totalUsers: userStats.totalUsers,
+        activeUsers: userStats.activeThisWeek,
+        newUsersThisMonth: userStats.newThisMonth
+      }));
+    }).catch((error) => {
+      console.error('Dashboard: Error loading user stats:', error);
+    });
+
+    return () => { 
+      console.log('Dashboard: Cleaning up subscriptions...');
+      unsubProducts(); 
+      unsubOrders(); 
+    };
   }, []);
 
   // Cloud Function disabled for Spark plan compatibility
@@ -144,56 +175,55 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Total Users card disabled for Spark plan compatibility */}
-          {/* <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">                                                                             
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">                                                                  
               <CardTitle className="text-sm font-medium">Total Users</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>                                                                     
               <p className="text-xs text-muted-foreground">
-                +{stats.monthlyGrowth}% from last month
-              </p>
-            </CardContent>
-          </Card> */}
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
-              <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalOrders.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                +8.2% from last month
+                +{stats.newUsersThisMonth} new this month
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">                                                                  
+              <CardTitle className="text-sm font-medium">Total Orders</CardTitle>                                                                               
+              <ShoppingCart className="h-4 w-4 text-muted-foreground" />        
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalOrders.toLocaleString()}</div>                                                                    
+              <p className="text-xs text-muted-foreground">
+                Avg: ₹{stats.averageOrderValue.toFixed(0)} per order
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">                                                                  
+              <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>                                                                              
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>
+              <div className="text-2xl font-bold">₹{stats.totalRevenue.toLocaleString()}</div>                                                                
               <p className="text-xs text-muted-foreground">
-                +12.3% from last month
+                From {stats.totalOrders} orders
               </p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Products</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">                                                                  
+              <CardTitle className="text-sm font-medium">Active Users</CardTitle>   
+              <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalProducts}</div>
+              <div className="text-2xl font-bold">{stats.activeUsers}</div>   
               <p className="text-xs text-muted-foreground">
-                +3 new this month
+                Active in last 7 days
               </p>
             </CardContent>
           </Card>
@@ -240,10 +270,18 @@ const Dashboard = () => {
                   <span>Featured Offer</span>
                 </Button>
               </Link>
-              <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2" disabled>
-                <Users className="h-6 w-6" />
-                <span>User Management</span>
-              </Button>
+              <Link to="/admin/users">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">                                       
+                  <Users className="h-6 w-6" />
+                  <span>User Management</span>
+                </Button>
+              </Link>
+              <Link to="/admin/data-test">
+                <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center gap-2">                                       
+                  <RefreshCw className="h-6 w-6" />
+                  <span>Data Test</span>
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -325,31 +363,119 @@ const Dashboard = () => {
           </TabsContent>
 
           <TabsContent value="sales" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Sales Analytics</CardTitle>
-                <CardDescription>Revenue and order trends</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
-                  Chart component will be added here
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Order Status Distribution</CardTitle>
+                  <CardDescription>Orders by status</CardDescription>     
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Delivered', value: orders.filter(o => o.status === 'delivered').length, color: '#10b981' },
+                            { name: 'Shipped', value: orders.filter(o => o.status === 'shipped').length, color: '#8b5cf6' },
+                            { name: 'Processing', value: orders.filter(o => o.status === 'processing').length, color: '#3b82f6' },
+                            { name: 'Pending', value: orders.filter(o => o.status === 'pending').length, color: '#f59e0b' },
+                            { name: 'Cancelled', value: orders.filter(o => o.status === 'cancelled').length, color: '#ef4444' }
+                          ]}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={80}
+                          dataKey="value"
+                          label={({ name, value }) => `${name}: ${value}`}
+                        >
+                          {[
+                            { name: 'Delivered', value: orders.filter(o => o.status === 'delivered').length, color: '#10b981' },
+                            { name: 'Shipped', value: orders.filter(o => o.status === 'shipped').length, color: '#8b5cf6' },
+                            { name: 'Processing', value: orders.filter(o => o.status === 'processing').length, color: '#3b82f6' },
+                            { name: 'Pending', value: orders.filter(o => o.status === 'pending').length, color: '#f59e0b' },
+                            { name: 'Cancelled', value: orders.filter(o => o.status === 'cancelled').length, color: '#ef4444' }
+                          ].map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Payment Method Distribution</CardTitle>
+                  <CardDescription>Orders by payment method</CardDescription>     
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={[
+                        { name: 'PhonePe', value: orders.filter(o => o.paymentMethod === 'phonepe').length },
+                        { name: 'COD', value: orders.filter(o => o.paymentMethod === 'cod').length },
+                        { name: 'Card', value: orders.filter(o => o.paymentMethod === 'card').length }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Analytics</CardTitle>
-                <CardDescription>User growth and engagement</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 flex items-center justify-center text-muted-foreground">
-                  User analytics chart will be added here
-                </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Activity Overview</CardTitle>
+                  <CardDescription>User engagement metrics</CardDescription>   
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm font-medium">Total Users</span>
+                      </div>
+                      <span className="text-lg font-bold">{stats.totalUsers}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <UserCheck className="h-4 w-4 text-green-500" />
+                        <span className="text-sm font-medium">Active This Week</span>
+                      </div>
+                      <span className="text-lg font-bold">{stats.activeUsers}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <TrendingUp className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm font-medium">New This Month</span>
+                      </div>
+                      <span className="text-lg font-bold">{stats.newUsersThisMonth}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>User Growth</CardTitle>
+                  <CardDescription>Monthly user registrations</CardDescription>   
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64 flex items-center justify-center text-muted-foreground">                                                                   
+                    User growth chart will be implemented with user registration data
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="products" className="space-y-6">

@@ -16,6 +16,8 @@ import OrdersAdmin from '@/pages/admin/Orders';
 import ImageUpload from '@/pages/admin/ImageUpload';
 import PromosAdmin from '@/pages/admin/Promos';
 import FeaturedOfferAdmin from '@/pages/admin/FeaturedOffer';
+import UserManagement from '@/pages/admin/UserManagement';
+import DataTest from '@/pages/admin/DataTest';
 import Profile from '@/pages/Profile';
 import Checkout from '@/pages/Checkout';
 import PaymentSuccess from '@/pages/PaymentSuccess';
@@ -27,6 +29,7 @@ import TermsOfService from '@/pages/TermsOfService';
 import RefundPolicy from '@/pages/RefundPolicy';
 import ShippingPolicy from '@/pages/ShippingPolicy';
 import ContactUs from '@/pages/ContactUs';
+import BulkOffer from '@/pages/BulkOffer';
 
 const queryClient = new QueryClient();
 
@@ -85,6 +88,16 @@ function App() {
                     <FeaturedOfferAdmin />
                   </ProtectedRoute>
                 } />
+                <Route path="/admin/users" element={
+                  <ProtectedRoute>
+                    <UserManagement />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin/data-test" element={
+                  <ProtectedRoute>
+                    <DataTest />
+                  </ProtectedRoute>
+                } />
                 <Route path="/profile" element={
                   <ProtectedRoute>
                     <Profile />
@@ -104,6 +117,7 @@ function App() {
                 <Route path="/refund-policy" element={<RefundPolicy />} />
                 <Route path="/shipping-policy" element={<ShippingPolicy />} />
                 <Route path="/contact-us" element={<ContactUs />} />
+                <Route path="/bulk-offer" element={<BulkOffer />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
               <Toaster />

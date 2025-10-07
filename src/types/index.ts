@@ -13,7 +13,7 @@ export interface Order {
   total: number;
   status: 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'completed' | 'failed' | 'refunded';
-  paymentMethod: 'phonepe' | 'cod' | 'card';
+  paymentMethod: 'phonepe' | 'razorpay' | 'cod' | 'card';
   createdAt: Date;
   updatedAt: Date;
   shippingAddress: {
@@ -27,11 +27,23 @@ export interface Order {
   trackingNumber?: string;
   promoCode?: string;
   discount?: number;
+  transactionId?: string;
+  gatewayOrderId?: string;
   student?: {
     name: string;
     branchDiv: string;
+    branch?: string;
+    collegeName?: string;
+    college?: string;
     phone: string;
-    campus: 'Bibwewadi' | 'Kondhwa';
+    campus: string;
+  };
+  partialPayment?: {
+    enabled: boolean;
+    paidNow: number; // amount collected in this payment
+    dueOnDelivery: number; // remaining amount to be collected later
+    remainingPaymentReceived?: boolean; // whether remaining payment has been received
+    remainingPaymentReceivedAt?: Date; // when remaining payment was received
   };
 }
 
@@ -65,6 +77,7 @@ export interface CartItem {
   quantity: number;
   image?: string;
   inStock: boolean;
+  allowPartialPayment?: boolean;
 }
 
 export interface Product {
@@ -76,10 +89,11 @@ export interface Product {
   description: string;
   category: string;
   inStock: boolean;
-  rating: number;
-  reviews: number;
+  rating?: number;
+  reviews?: number;
   isNew?: boolean;
   isFeatured?: boolean;
+  allowPartialPayment?: boolean;
   images?: string[];
   whatsInBox?: string[];
   warranty?: string;
