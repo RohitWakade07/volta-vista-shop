@@ -17,8 +17,8 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 0 0% 20%;
 
-    --primary: 0 84% 50%;
-    --primary-foreground: 45 100% 95%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 10%;
 
     --secondary: 210 40% 96%;
     --secondary-foreground: 0 0% 20%;
@@ -26,15 +26,15 @@ All colors MUST be HSL.
     --muted: 210 40% 96%;
     --muted-foreground: 0 0% 40%;
 
-    --accent: 0 84% 50%;
-    --accent-foreground: 45 100% 95%;
+    --accent: 48 100% 50%;
+    --accent-foreground: 0 0% 10%;
 
     --destructive: 0 84.2% 50%;
     --destructive-foreground: 45 100% 95%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 0 84% 50%;
+    --ring: 48 100% 50%;
 
     --radius: 0.5rem;
 
@@ -42,9 +42,9 @@ All colors MUST be HSL.
 
     --sidebar-foreground: 0 0% 20%;
 
-    --sidebar-primary: 0 84% 50%;
+    --sidebar-primary: 48 100% 50%;
 
-    --sidebar-primary-foreground: 45 100% 95%;
+    --sidebar-primary-foreground: 0 0% 10%;
 
     --sidebar-accent: 210 40% 96%;
 
@@ -52,7 +52,7 @@ All colors MUST be HSL.
 
     --sidebar-border: 214.3 31.8% 91.4%;
 
-    --sidebar-ring: 0 84% 50%;
+    --sidebar-ring: 48 100% 50%;
   }
 
   .dark {
@@ -65,8 +65,8 @@ All colors MUST be HSL.
     --popover: 0 0% 15%;
     --popover-foreground: 45 100% 90%;
 
-    --primary: 0 84% 50%;
-    --primary-foreground: 45 100% 95%;
+    --primary: 48 100% 50%;
+    --primary-foreground: 0 0% 10%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -74,23 +74,23 @@ All colors MUST be HSL.
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 0 84% 50%;
-    --accent-foreground: 45 100% 95%;
+    --accent: 48 100% 50%;
+    --accent-foreground: 0 0% 10%;
 
     --destructive: 0 84% 50%;
     --destructive-foreground: 45 100% 95%;
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 0 84% 50%;
+    --ring: 48 100% 50%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 0 84% 50%;
-    --sidebar-primary-foreground: 45 100% 95%;
+    --sidebar-primary: 48 100% 50%;
+    --sidebar-primary-foreground: 0 0% 10%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 0 84% 50%;
+    --sidebar-ring: 48 100% 50%;
   }
 }
 
@@ -140,35 +140,35 @@ All colors MUST be HSL.
   }
 
   /* Ultron Brand Colors */
-  .ultron-red {
-    background-color: hsl(0 84% 50%);
-    color: hsl(45 100% 95%);
+  .ultron-yellow {
+    background-color: hsl(48 100% 50%);
+    color: hsl(0 0% 10%);
   }
 
-  .ultron-yellow {
+  .ultron-yellow-light {
     background-color: hsl(45 100% 70%);
     color: hsl(0 0% 20%);
   }
 
-  .ultron-red-text {
-    color: hsl(0 84% 50%);
+  .ultron-yellow-text {
+    color: hsl(48 100% 50%);
   }
 
-  .ultron-yellow-text {
+  .ultron-yellow-light-text {
     color: hsl(45 100% 70%);
   }
 
   .ultron-gradient {
-    background: linear-gradient(135deg, hsl(0 84% 50%) 0%, hsl(45 100% 70%) 100%);
-    color: white;
+    background: linear-gradient(135deg, hsl(48 100% 50%) 0%, hsl(45 100% 70%) 100%);
+    color: hsl(0 0% 10%);
   }
 
   .ultron-border {
-    border-color: hsl(0 84% 50%);
+    border-color: hsl(48 100% 50%);
   }
 
   .ultron-shadow {
-    box-shadow: 0 4px 14px 0 hsl(0 84% 50% / 0.3);
+    box-shadow: 0 4px 14px 0 hsl(48 100% 50% / 0.3);
   }
 
   /* Ultron Logo Sizes */
