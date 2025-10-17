@@ -1,22 +1,9 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Bot, TrendingUp, Zap, MessageSquare, BarChart3, Target } from 'lucide-react';
-import { useState, useRef } from 'react';
 
 const Landing = () => {
   const navigate = useNavigate();
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const agentsRef = useRef<HTMLSpanElement>(null);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLSpanElement>) => {
-    if (agentsRef.current) {
-      const rect = agentsRef.current.getBoundingClientRect();
-      setMousePos({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-    }
-  };
 
   return (
     <div className="min-h-screen bg-background dark">
@@ -53,21 +40,7 @@ const Landing = () => {
           <div className="text-center space-y-8 max-w-4xl mx-auto">
             <h1 className="text-6xl sm:text-7xl lg:text-8xl font-light tracking-tight text-foreground group">
               Ultron{' '}
-              <span 
-                ref={agentsRef}
-                onMouseMove={handleMouseMove}
-                className="font-semibold text-primary inline-block cursor-pointer relative overflow-hidden"
-                style={{
-                  background: `radial-gradient(circle 100px at ${mousePos.x}px ${mousePos.y}px, 
-                    rgba(var(--primary-rgb, 139, 92, 246), 0.8),
-                    rgba(var(--primary-rgb, 139, 92, 246), 0.4) 30%,
-                    hsl(var(--primary)) 60%)`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text',
-                  transition: 'background 0.1s ease-out',
-                }}
-              >
+              <span className="font-semibold text-primary inline-block transition-all duration-500 hover:blur-md cursor-pointer">
                 Agents
               </span>
             </h1>
