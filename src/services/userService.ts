@@ -11,7 +11,7 @@ export class UserService {
       const users = snap.docs.map((d) => {
         const data = d.data();
         console.log('UserService: Processing user', d.id, data);
-        return { id: d.id, ...data } as UserProfile;
+        return { ...data, id: d.id } as unknown as UserProfile;
       });
       console.log('UserService: Processed users:', users);
       onUpdate(users);
@@ -48,7 +48,7 @@ export class UserService {
       const users = usersSnapshot.docs.map((d) => {
         const data = d.data();
         console.log('UserService: Processing user for stats', d.id, data);
-        return { id: d.id, ...data } as UserProfile;
+        return { ...data, id: d.id } as unknown as UserProfile;
       });
       
       const now = new Date();

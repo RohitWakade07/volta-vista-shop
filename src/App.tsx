@@ -6,7 +6,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
-import Index from '@/pages/Index';
+import Landing from '@/pages/Landing';
+import Shop from '@/pages/Shop';
 import NotFound from '@/pages/NotFound';
 import Login from '@/pages/auth/Login';
 import Register from '@/pages/auth/Register';
@@ -43,7 +44,8 @@ function App() {
           <TooltipProvider>
             <Router>
               <Routes>
-                <Route path="/" element={<Index />} />
+                <Route path="/" element={<Landing />} />
+                <Route path="/shop" element={<Shop />} />
                 <Route path="/auth/login" element={
                   <ProtectedRoute requireAuth={false}>
                     <Login />

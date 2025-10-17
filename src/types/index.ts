@@ -19,6 +19,7 @@ export interface Order {
   shippingAddress: {
     name: string;
     phone: string;
+    email?: string;
     address: string;
     city: string;
     state: string;
@@ -29,6 +30,7 @@ export interface Order {
   discount?: number;
   transactionId?: string;
   gatewayOrderId?: string;
+  notes?: string;
   student?: {
     name: string;
     branchDiv: string;
